@@ -103,7 +103,7 @@ Test and Live Mode credentials are separate. After Dodo approves the merchant ac
 
 1. Create a new Live Mode one-time pay-what-you-want visibility-bid product.
 2. Create a least-privilege Live Mode API key.
-3. Register `https://www.dealfight.lol/api/payment-webhook` for `payment.succeeded` and copy its Live signing secret.
+3. Register `https://www.dealfight.lol/api/payment-webhook` for `payment.succeeded`, `refund.succeeded`, and `refund.failed`, then copy its Live signing secret.
 4. Replace the four `DODO_PAYMENTS_*` Production variables with the Live values and set `DODO_PAYMENTS_ENVIRONMENT=live_mode`.
 5. Redeploy Production, complete a controlled live checkout, and verify the signed event, Supabase row, return banner, and Dodo transaction before opening sales broadly.
 
