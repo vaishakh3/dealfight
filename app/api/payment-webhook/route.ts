@@ -73,7 +73,10 @@ export async function POST(request: Request) {
       .update({
         status: 'paid',
         dodo_payment_id: payment.payment_id,
-        payment_received_cents: payment.total_amount,
+        payment_received_minor: payment.total_amount,
+        payment_currency: payment.currency,
+        settlement_amount_minor: payment.settlement_amount,
+        settlement_currency: payment.settlement_currency,
         paid_at: event.timestamp,
         last_payment_event_id: webhookId,
       })
