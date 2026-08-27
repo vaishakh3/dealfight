@@ -58,6 +58,15 @@ function BrandMark({ listing, large = false }: { listing: Listing; large?: boole
   );
 }
 
+function DealFightWordmark({ priority = false }: { priority?: boolean }) {
+  return (
+    <>
+      <Image className="site-logo-mark" src="/brand/dealfight-mark-512.png" alt="" width={38} height={38} sizes="38px" priority={priority} />
+      <b>DEAL<span>FIGHT</span><sup>.LOL</sup></b>
+    </>
+  );
+}
+
 async function recordEvent(offerId: string, type: 'claim' | 'click' | 'share') {
   try {
     await fetch('/api/events', {
@@ -386,7 +395,7 @@ export default function PriceFightClient() {
     <main id="top">
       <div id="page-content" inert={modal ? true : undefined} aria-hidden={modal ? true : undefined}>
       <header className="site-header">
-        <a className="wordmark" href="#top" aria-label="Deal Fight home">DEAL<span>FIGHT</span><sup>.LOL</sup></a>
+        <a className="wordmark" href="#top" aria-label="Deal Fight home"><DealFightWordmark priority /></a>
         <nav aria-label="Main navigation"><a href="#deals">Browse deals</a><a href="#how-ranking-works">How ranking works</a><a href="#for-brands">For brands</a></nav>
         <button className="header-cta" type="button" onClick={() => openModal({ type: 'bid', targetBid: 5 })}><span className="desktop-only">FOR BRANDS: </span>GET LISTED <b>↗</b></button>
       </header>
@@ -479,7 +488,7 @@ export default function PriceFightClient() {
         </div>
       </section>
 
-      <footer><a className="wordmark inverted" href="#top">DEAL<span>FIGHT</span><sup>.LOL</sup></a><p>Brands compete for attention. Shoppers get the deal.</p><button type="button" onClick={() => openModal({ type: 'bid', targetBid: claimTopBid })}>TAKE THE TOP SPOT · {formatMoney(claimTopBid)} ↗</button></footer>
+      <footer><a className="wordmark inverted" href="#top" aria-label="Deal Fight home"><DealFightWordmark /></a><p>Brands compete for attention. Shoppers get the deal.</p><button type="button" onClick={() => openModal({ type: 'bid', targetBid: claimTopBid })}>TAKE THE TOP SPOT · {formatMoney(claimTopBid)} ↗</button></footer>
       </div>
 
       {modal?.type === 'deal' && <DealModal listing={modal.listing} onClose={closeModal} />}
