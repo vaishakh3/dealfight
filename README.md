@@ -11,6 +11,16 @@ npm run dev
 
 The homepage and sample leaderboard work without environment variables. Copy `.env.example` to `.env.local` and supply the server-only `SUPABASE_URL` and `SUPABASE_SECRET_KEY` values to activate submission and engagement storage. A legacy `SUPABASE_SERVICE_ROLE_KEY` also works, but must never be exposed to browser code.
 
+For an isolated local database, Docker must be running:
+
+```bash
+npx supabase start
+npx supabase db reset
+npx supabase status -o env
+```
+
+Use the reported `API_URL` as `SUPABASE_URL` and the reported `SECRET_KEY` as `SUPABASE_SECRET_KEY`. The checked-in local configuration uses the `5532x` port range so it can coexist with another Supabase project using the defaults.
+
 ## Vercel deployment
 
 The repository is configured as a standard Next.js App Router application. `vercel.json` explicitly selects Vercel's Next.js framework preset, including for projects that were initially configured as “Other.”
@@ -21,7 +31,7 @@ Connect the GitHub repository to Vercel and deploy `main`. No output-directory o
 
 Create a dedicated Supabase project, apply the migration in `supabase/migrations`, then add `SUPABASE_URL` and `SUPABASE_SECRET_KEY` as encrypted Vercel environment variables. The app uses a server-only Supabase client; no privileged key is included in the browser bundle.
 
-The migration creates constrained `submissions` and `engagement_events` tables, targeted indexes, an `updated_at` trigger, and row-level security. The public `anon` and `authenticated` roles have no direct table access; writes go through validated Next.js API routes.
+The migrations create constrained `submissions` and `engagement_events` tables, targeted indexes, an `updated_at` trigger, and row-level security. The public `anon` and `authenticated` roles have no direct table access. The server role is limited to the exact read/write operations used by the validated Next.js API routes.
 
 Without a database, the public page still renders and bid submissions return a clear `DATABASE_NOT_CONNECTED` response instead of crashing the deployment.
 
@@ -45,4 +55,5 @@ Never trust a payment amount sent by the browser. Only a verified webhook may ma
 ```bash
 npm run check
 npm audit --omit=dev
+npx supabase db lint --local --schema public --level warning --fail-on warning
 ```
