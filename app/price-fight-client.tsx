@@ -542,7 +542,19 @@ export default function PriceFightClient({ initialListings = launchListings }: {
         </div>
       </section>
 
-      <footer><a className="wordmark inverted" href="#top" aria-label="DEALFIGHT.LOL home"><DealFightWordmark /></a><p>Brands compete for attention. Shoppers get the deal.</p><button type="button" onClick={() => openModal({ type: 'bid', targetBid: claimTopBid })}>TAKE THE TOP SPOT · {formatMoney(claimTopBid)} ↗</button></footer>
+      <footer>
+        <a className="wordmark inverted" href="#top" aria-label="DEALFIGHT.LOL home"><DealFightWordmark /></a>
+        <div className="footer-copy">
+          <p>Brands compete for attention. Shoppers get the deal.</p>
+          <small>
+            Brand visibility payments are processed and resold by Dodo Payments, our Merchant of Record. Dodo handles checkout, taxes, receipts, and payment support.{' '}
+            <a href="https://dodopayments.com/buyer-terms" target="_blank" rel="noopener noreferrer">Buyer terms</a>
+            {' · '}
+            <a href="https://dodopayments.com/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy</a>
+          </small>
+        </div>
+        <button type="button" onClick={() => openModal({ type: 'bid', targetBid: claimTopBid })}>TAKE THE TOP SPOT · {formatMoney(claimTopBid)} ↗</button>
+      </footer>
       </div>
 
       {modal?.type === 'deal' && <DealModal listing={modal.listing} rank={listingRanks.get(modal.listing.id) ?? orderedListings.length} onClose={closeModal} />}

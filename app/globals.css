@@ -192,6 +192,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 footer { align-items: center; background: var(--orange); border-top: 1px solid var(--ink); display: grid; grid-template-columns: 1fr 1fr 1fr; min-height: 150px; padding: 30px 4vw; }
 .wordmark.inverted, .wordmark.inverted > b span { color: white; }
 footer p { color: white; font-size: 12px; justify-self: center; max-width: 280px; text-align: center; }
+footer .footer-copy { justify-self: center; max-width: 390px; text-align: center; }
+footer .footer-copy p { margin: 0 auto 9px; }
+footer .footer-copy small { color: rgba(255, 255, 255, .82); display: block; font-size: 8px; line-height: 1.55; }
+footer .footer-copy a { color: white; font-weight: 800; text-underline-offset: 2px; }
 footer button { background: var(--ink); border: 0; color: white; cursor: pointer; font-size: 10px; font-weight: 850; justify-self: end; padding: 15px 18px; }
 
 .modal-shell { align-items: center; background: rgba(16, 17, 15, .82); display: flex; inset: 0; justify-content: center; padding: 24px; position: fixed; z-index: 100; }
@@ -406,7 +410,9 @@ footer button { background: var(--ink); border: 0; color: white; cursor: pointer
   .faq-list summary span { float: none; }
   .faq-list p { font-size: 14px; margin-top: 12px; }
   footer { gap: 22px; grid-template-columns: 1fr; padding: 40px 20px; }
-  footer p, footer button { justify-self: start; text-align: left; }
+  footer .footer-copy, footer p, footer button { justify-self: start; text-align: left; }
+  footer .footer-copy p { margin-left: 0; }
+  footer .footer-copy small { font-size: 9px; }
   footer .wordmark { align-items: center; display: flex; min-height: 44px; }
   footer button { font-size: 11px; min-height: 44px; }
   .modal-shell { align-items: flex-end; padding: 0; }
