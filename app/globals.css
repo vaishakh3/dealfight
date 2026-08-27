@@ -5,8 +5,8 @@
   --line: #cfcbc0;
   --lime: #ceff2e;
   --lime-soft: #eaff9f;
-  --orange: #ff5a36;
-  --blue: #1e5eff;
+  --orange: #bd2c0d;
+  --blue: #1958f0;
   --white: #fffef8;
   --purple: #7557ff;
 }
@@ -20,6 +20,11 @@ button { color: inherit; }
 a { color: inherit; text-decoration: none; }
 s { color: var(--muted); font-weight: 500; }
 body.modal-open { overflow: hidden; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
 
 .site-header {
   align-items: center;
@@ -41,7 +46,7 @@ body.modal-open { overflow: hidden; }
 .site-header nav a { font-size: 12px; font-weight: 750; }
 .site-header nav a:hover { text-decoration: underline; text-underline-offset: 5px; }
 .header-cta { background: var(--ink); border: 0; color: white; cursor: pointer; font-size: 10px; font-weight: 900; justify-self: end; letter-spacing: .03em; padding: 14px 17px; }
-.header-cta span { color: var(--lime); margin-left: 10px; }
+.header-cta b { color: var(--lime); margin-left: 10px; }
 
 .preview-banner { align-items: center; background: var(--blue); color: white; display: flex; font-family: var(--font-geist-mono); font-size: 10px; gap: 14px; justify-content: center; min-height: 34px; padding: 8px 4vw; text-align: center; }
 .preview-banner b { background: var(--lime); color: var(--ink); padding: 3px 6px; }
@@ -62,8 +67,7 @@ body.modal-open { overflow: hidden; }
 .hero-actions > a span { margin-left: 8px; }
 .hero-trust { color: var(--muted); display: flex; flex-wrap: wrap; font-size: 10px; font-weight: 700; gap: 18px; margin-top: 32px; }
 
-.featured-deal { align-self: center; background: var(--white); border: 1px solid var(--ink); box-shadow: 11px 11px 0 var(--ink); padding: 25px; position: relative; transform: rotate(.6deg); }
-.featured-deal::before { background: var(--lime); border: 1px solid var(--ink); content: ''; height: 16px; left: 18px; position: absolute; right: -9px; top: -9px; z-index: -1; }
+.featured-deal { align-self: center; background: var(--white); border: 1px solid var(--ink); box-shadow: 8px -8px 0 -1px var(--lime), 11px 11px 0 var(--ink); padding: 25px; position: relative; transform: rotate(.6deg); }
 .featured-topline { align-items: center; display: flex; font-family: var(--font-geist-mono); font-size: 9px; font-weight: 900; justify-content: space-between; letter-spacing: .08em; }
 .featured-topline span:first-child { background: var(--orange); color: white; padding: 7px 9px; }
 .featured-topline span:last-child { border: 1px solid var(--ink); padding: 6px 8px; }
@@ -150,8 +154,8 @@ body.modal-open { overflow: hidden; }
 .brand-copy li { align-items: start; border-bottom: 1px solid rgba(255,255,255,.35); display: grid; gap: 15px; grid-template-columns: 30px 1fr; padding: 16px 0; }
 .brand-copy li > span { align-items: center; background: var(--lime); color: var(--ink); display: flex; font-family: var(--font-geist-mono); font-size: 10px; font-weight: 900; height: 25px; justify-content: center; width: 25px; }
 .brand-copy li b { font-size: 14px; }
-.brand-copy li p { color: #d9e2ff; font-size: 11px; margin: 4px 0 0; }
-.brand-cta { background: var(--lime); border: 2px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); cursor: pointer; font-size: 12px; font-weight: 900; padding: 18px 20px; }
+.brand-copy li p { color: #f0f3ff; font-size: 11px; margin: 4px 0 0; }
+.brand-cta { background: var(--lime); border: 2px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); color: var(--ink); cursor: pointer; font-size: 12px; font-weight: 900; padding: 18px 20px; }
 .brand-cta span { margin-left: 28px; }
 .brand-math { align-self: center; background: var(--paper); border: 1px solid var(--ink); box-shadow: 12px 12px 0 var(--ink); color: var(--ink); padding: 25px; transform: rotate(1deg); }
 .brand-math > span { font-family: var(--font-geist-mono); font-size: 9px; font-weight: 900; letter-spacing: .08em; }
@@ -176,8 +180,8 @@ body.modal-open { overflow: hidden; }
 .faq-list p { color: var(--muted); font-size: 13px; line-height: 1.55; margin: 15px 45px 0 0; }
 
 footer { align-items: center; background: var(--orange); border-top: 1px solid var(--ink); display: grid; grid-template-columns: 1fr 1fr 1fr; min-height: 150px; padding: 30px 4vw; }
-.wordmark.inverted span { color: white; }
-footer p { font-size: 12px; justify-self: center; max-width: 280px; text-align: center; }
+.wordmark.inverted, .wordmark.inverted span { color: white; }
+footer p { color: white; font-size: 12px; justify-self: center; max-width: 280px; text-align: center; }
 footer button { background: var(--ink); border: 0; color: white; cursor: pointer; font-size: 10px; font-weight: 850; justify-self: end; padding: 15px 18px; }
 
 .modal-shell { align-items: center; background: rgba(16, 17, 15, .82); display: flex; inset: 0; justify-content: center; padding: 24px; position: fixed; z-index: 100; }
@@ -210,6 +214,7 @@ footer button { background: var(--ink); border: 0; color: white; cursor: pointer
 .bid-modal-header .eyebrow { color: var(--lime); margin-bottom: 9px; }
 .bid-modal-header h2 { font-size: 40px; letter-spacing: -.06em; margin: 0; }
 .bid-modal-header > p { color: #c6c7c0; font-size: 12px; line-height: 1.5; margin: 0; }
+.mobile-modal-nav, .mobile-preview-button, .mobile-edit-button { display: none; }
 .bid-modal-layout { display: grid; grid-template-columns: 1.35fr .65fr; }
 .bid-modal form { display: grid; gap: 18px; padding: 28px 30px 34px; }
 .bid-modal fieldset { border: 1px solid var(--line); display: grid; gap: 13px; margin: 0; padding: 17px; }
@@ -326,45 +331,133 @@ footer button { background: var(--ink); border: 0; color: white; cursor: pointer
   .brand-math { max-width: 520px; transform: none; }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 820px) {
   .site-header { min-height: 64px; padding: 0 18px; }
-  .header-cta { font-size: 8px; padding: 11px; }
-  .preview-banner { font-size: 8px; }
+  .site-header .wordmark { align-items: center; display: flex; font-size: 19px; min-height: 44px; }
+  .desktop-only { display: none; }
+  .header-cta { font-size: 9px; min-height: 44px; padding: 10px 12px; }
+  .preview-banner { font-size: 10px; line-height: 1.35; }
   .consumer-hero { min-height: 0; padding: 58px 20px 65px; }
   .hero-copy h1 { font-size: clamp(58px, 17vw, 82px); line-height: .8; }
   .hero-copy > p { font-size: 17px; margin-top: 28px; }
   .hero-actions { align-items: start; flex-direction: column; gap: 22px; }
-  .hero-trust { align-items: start; flex-direction: column; gap: 8px; }
+  .hero-actions > a { align-items: center; display: inline-flex; min-height: 44px; }
+  .hero-trust { align-items: start; flex-direction: column; font-size: 11px; gap: 8px; }
+  .eyebrow { font-size: 11px; }
   .featured-deal { margin-top: 55px; padding: 18px; }
+  .featured-topline { font-size: 9px; }
+  .featured-brand small { font-size: 9px; }
+  .featured-brand p { font-size: 13px; line-height: 1.35; }
+  .featured-disclosure { font-size: 10px; }
   .consumer-proof div { align-items: start; flex-direction: column; gap: 4px; padding: 18px 20px; }
+  .consumer-proof span { font-size: 10px; }
   .ranking-explainer, .deals-section, .brand-section, .faq-section { padding: 70px 20px; }
   .ranking-explainer h2, .section-heading h2, .faq-section h2 { font-size: 48px; }
   .ranking-equation { margin-top: 40px; }
-  .ranking-equation article { min-height: 230px; }
-  .board-key { display: grid; gap: 7px; }
+  .ranking-equation article { min-height: 220px; padding: 24px; }
+  .ranking-equation article > span { font-size: 9px; }
+  .ranking-equation h3 { font-size: 26px; }
+  .ranking-equation p { font-size: 13px; }
+  .board-key { display: grid; font-size: 9px; gap: 8px; line-height: 1.45; }
   .category-group { flex-wrap: nowrap; margin-right: -20px; overflow-x: auto; padding-right: 20px; }
-  .category-group button { flex: 0 0 auto; }
+  .category-group button { flex: 0 0 auto; font-size: 11px; min-height: 44px; }
+  .category-group button { min-width: 44px; }
   .deal-board { grid-template-columns: 1fr; }
+  .deal-row { grid-template-columns: 80px 1fr; }
+  .rank-cell b { font-size: 25px; }
+  .rank-cell span { font-size: 8px; }
+  .product-cell { gap: 13px; min-height: 112px; padding: 16px; }
+  .category-label { font-size: 9px; }
+  .product-cell h3 { font-size: 19px; }
+  .product-cell p { font-size: 12px; }
+  .consumer-offer { min-height: 112px; padding: 16px 16px 30px; }
+  .deal-pill { font-size: 10px; padding: 9px; }
+  .consumer-offer div strong { font-size: 16px; }
+  .consumer-offer div small { font-size: 10px; }
+  .consumer-offer > b { bottom: 9px; font-size: 9px; right: 15px; }
+  .get-deal-button { font-size: 11px; min-height: 50px; }
+  .placement-disclosure { font-size: 8px; line-height: 1.4; padding: 8px 11px; }
+  .sample-note { font-size: 9px; line-height: 1.5; }
   .brand-copy h2 { font-size: 57px; }
+  .brand-copy > p { font-size: 16px; }
+  .brand-copy li > span { height: 32px; width: 32px; }
+  .brand-copy li { grid-template-columns: 38px 1fr; }
+  .brand-copy li b { font-size: 15px; }
+  .brand-copy li p { font-size: 12px; line-height: 1.4; }
   .brand-section { padding-left: 20px; padding-right: 20px; }
+  .math-card small { font-size: 9px; }
+  .math-card p { font-size: 13px; }
+  .brand-math > p { font-size: 10px; }
   .faq-section { grid-template-columns: 1fr; }
+  .faq-list details { padding: 12px 0; }
+  .faq-list summary { align-items: center; display: flex; justify-content: space-between; min-height: 44px; }
+  .faq-list summary span { float: none; }
+  .faq-list p { font-size: 14px; margin-top: 12px; }
   footer { gap: 22px; grid-template-columns: 1fr; padding: 40px 20px; }
   footer p, footer button { justify-self: start; text-align: left; }
+  footer .wordmark { align-items: center; display: flex; min-height: 44px; }
+  footer button { font-size: 11px; min-height: 44px; }
   .modal-shell { align-items: flex-end; padding: 0; }
   .modal-card { border-bottom: 0; box-shadow: none; max-height: 95vh; padding: 26px 20px; width: 100%; }
-  .bid-modal { padding: 0; }
+  .modal-close { align-items: center; display: flex; height: 44px; justify-content: center; right: 12px; top: 12px; width: 44px; }
+  .deal-modal { padding-bottom: max(26px, env(safe-area-inset-bottom)); }
+  .dialog-kicker { font-size: 9px; padding-right: 48px; }
+  .deal-brand p { font-size: 13px; }
+  .offer-terms { font-size: 13px; }
+  .coupon-box span { font-size: 9px; }
+  .coupon-box button { font-size: 9px; min-height: 44px; }
+  .sponsor-explainer b { font-size: 11px; }
+  .sponsor-explainer p { font-size: 10px; }
+  .deal-modal > small { font-size: 9px; line-height: 1.4; }
+  .bid-modal { height: 100dvh; max-height: 100dvh; padding: 0; }
   .bid-modal-header { display: block; padding: 27px 60px 23px 20px; }
   .bid-modal-header h2 { font-size: 32px; }
-  .bid-modal-header > p { margin-top: 12px; }
-  .bid-modal form { padding: 22px 17px; }
+  .bid-modal-header > p { font-size: 13px; margin-top: 12px; }
+  .bid-modal > .modal-close { display: none; }
+  .mobile-modal-nav { background: var(--paper); border-bottom: 1px solid var(--ink); display: grid; grid-template-columns: 1fr 48px; position: sticky; top: 0; z-index: 3; }
+  .mobile-modal-tabs { display: grid; grid-template-columns: 1fr 1fr; }
+  .mobile-modal-tabs button { background: transparent; border: 0; border-right: 1px solid var(--ink); font-size: 10px; font-weight: 900; min-height: 48px; }
+  .mobile-modal-tabs button.active { background: var(--lime); }
+  .mobile-tab-close { background: transparent; border: 0; border-left: 1px solid var(--ink); display: block; font-size: 22px !important; }
+  .bid-modal-layout { display: block; }
+  .bid-modal-layout form, .bid-modal-layout .listing-preview { display: none; }
+  .bid-modal-layout form.mobile-active { display: grid; }
+  .bid-modal-layout .listing-preview.mobile-active { display: block; }
+  .bid-modal form { padding: 22px 17px max(30px, env(safe-area-inset-bottom)); }
+  .bid-modal label { font-size: 10px; }
+  .bid-modal input, .bid-modal select { font-size: 16px; min-height: 48px; }
+  .bid-modal legend div { font-size: 15px; }
+  .bid-modal legend small { font-size: 9px; line-height: 1.35; }
   .field-pair, .price-pair { grid-template-columns: 1fr; }
   .discount-chip { min-height: 58px; }
   .placement-choices { grid-template-columns: 1fr 1fr; }
+  .placement-choices button { min-height: 98px; padding: 12px; }
+  .placement-choices button span { font-size: 10px; }
+  .placement-choices button b { font-size: 18px; }
+  .placement-choices button small { font-size: 8px; }
   .custom-bid { align-items: start; grid-template-columns: 1fr; }
+  .rank-estimate > span { font-size: 9px; }
+  .rank-estimate small { font-size: 9px; line-height: 1.4; }
   .checkout-clarity { grid-template-columns: 1fr; }
   .checkout-clarity div { border-bottom: 1px solid var(--ink); border-right: 0; }
   .checkout-clarity div:last-child { border-bottom: 0; }
-  .listing-preview { padding: 25px 17px 35px; }
+  .checkout-clarity span { font-size: 8px; }
+  .checkout-clarity b { font-size: 15px; }
+  .mobile-preview-button { align-items: center; background: var(--white); border: 1px solid var(--ink); display: flex; font-size: 10px; font-weight: 900; justify-content: space-between; min-height: 48px; padding: 13px; }
+  .listing-preview { min-height: calc(100dvh - 48px); padding: 25px 17px max(35px, env(safe-area-inset-bottom)); }
+  .preview-heading span { font-size: 9px; }
+  .preview-heading b { font-size: 14px; }
+  .preview-rank span { font-size: 9px; }
+  .preview-product small { font-size: 9px; }
+  .preview-product p { font-size: 11px; }
+  .preview-offer > span { font-size: 8px; }
+  .preview-offer small { font-size: 9px; }
+  .preview-cta { font-size: 10px; min-height: 44px; }
+  .preview-disclosure { font-size: 8px; line-height: 1.4; }
+  .separation-note div span { font-size: 7px; }
+  .separation-note div b { font-size: 13px; }
+  .preview-help { font-size: 10px; }
+  .mobile-edit-button { background: transparent; border: 1px solid var(--ink); display: block; font-size: 10px; font-weight: 900; margin: 18px auto 0; min-height: 44px; width: min(430px, 100%); }
   .coupon-box { grid-template-columns: 1fr auto; }
   .coupon-box span { grid-column: 1 / -1; margin-bottom: 8px; }
   .success-summary { grid-template-columns: 1fr; }

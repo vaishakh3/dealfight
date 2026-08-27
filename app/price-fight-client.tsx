@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { categories, listings, type Listing } from '@/lib/leaderboard-data';
 
 type BidModalState = {
@@ -35,6 +35,7 @@ const preciseDollarFormatter = new Intl.NumberFormat('en-US', {
 });
 const compactNumberFormatter = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
 const orderedListings = [...listings].sort((a, b) => b.totalBid - a.totalBid);
+const listingRanks = new Map(orderedListings.map((listing, index) => [listing.id, index + 1]));
 const placementChoices = [
   { label: 'Top spot', detail: 'Above the current #1', amount: orderedListings[0].totalBid + 1 },
   { label: 'Top 3', detail: 'Above the current #3', amount: orderedListings[2].totalBid + 1 },
@@ -64,9 +65,14 @@ async function recordEvent(offerId: string, type: 'claim' | 'click' | 'share') {
 
 function DealModal({ listing, onClose }: { listing: Listing; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
+  const rank = listingRanks.get(listing.id) ?? orderedListings.length;
 
   const copyCode = async () => {
-    await navigator.clipboard?.writeText(listing.coupon);
+    try {
+      await navigator.clipboard?.writeText(listing.coupon);
+    } catch {
+      // Still reveal the code as copied feedback when clipboard access is restricted.
+    }
     setCopied(true);
     recordEvent(listing.id, 'claim');
     window.setTimeout(() => setCopied(false), 1600);
@@ -76,7 +82,7 @@ function DealModal({ listing, onClose }: { listing: Listing; onClose: () => void
     <div className="modal-shell" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="modal-card deal-modal" role="dialog" aria-modal="true" aria-labelledby="deal-title">
         <button className="modal-close" type="button" onClick={onClose} aria-label="Close deal">×</button>
-        <div className="dialog-kicker"><span>SHOPPER OFFER</span><span>Sponsored #{listings.indexOf(listing) + 1}</span></div>
+        <div className="dialog-kicker"><span>SHOPPER OFFER</span><span>Sponsored #{rank}</span></div>
         <div className="deal-brand">
           <span className="brand-mark large" aria-hidden="true">{listing.mark}</span>
           <div><h2 id="deal-title">{listing.name}</h2><p>{listing.tagline}</p></div>
@@ -96,7 +102,7 @@ function DealModal({ listing, onClose }: { listing: Listing; onClose: () => void
           Go to {listing.name} <span>↗</span>
         </a>
         <div className="sponsor-explainer">
-          <b>Why is this sponsored #{listings.indexOf(listing) + 1}?</b>
+          <b>Why is this sponsored #{rank}?</b>
           <p>{listing.name} has committed {formatMoney(listing.totalBid)} for this placement. That payment determines rank; the shopper offer above is separate.</p>
         </div>
         <small>Illustrative preseason inventory. No affiliation or live discount is implied.</small>
@@ -113,6 +119,8 @@ function ListingPreview({
   dealPrice,
   couponCode,
   totalBid,
+  mobileActive,
+  onEdit,
 }: {
   productName: string;
   tagline: string;
@@ -121,13 +129,15 @@ function ListingPreview({
   dealPrice: number;
   couponCode: string;
   totalBid: number;
+  mobileActive: boolean;
+  onEdit: () => void;
 }) {
   const discount = listPrice > dealPrice && dealPrice > 0 ? Math.round((1 - dealPrice / listPrice) * 100) : 0;
   const estimatedRank = 1 + listings.filter((item) => item.totalBid >= totalBid).length;
   const initials = productName.trim().split(/\s+/).map((word) => word[0]).join('').slice(0, 2).toUpperCase() || 'YO';
 
   return (
-    <aside className="listing-preview" aria-label="Live shopper preview">
+    <aside className={`listing-preview ${mobileActive ? 'mobile-active' : ''}`} aria-label="Live shopper preview">
       <div className="preview-heading"><span>LIVE SHOPPER PREVIEW</span><b>This is how your listing appears</b></div>
       <article className="preview-card">
         <div className="preview-rank"><b>#{estimatedRank}</b><span>Sponsored placement</span></div>
@@ -150,6 +160,7 @@ function ListingPreview({
         <div><span>YOU BID FOR VISIBILITY</span><b>{formatMoney(totalBid || 0)}</b></div>
       </div>
       <p className="preview-help">These are independent numbers. Changing your placement bid never changes the price customers pay.</p>
+      <button className="mobile-edit-button" type="button" onClick={onEdit}>← EDIT MY LISTING</button>
     </aside>
   );
 }
@@ -165,11 +176,20 @@ function BidModal({ targetBid, onClose }: { targetBid: number; onClose: () => vo
   const [status, setStatus] = useState<'idle' | 'submitting'>('idle');
   const [error, setError] = useState('');
   const [result, setResult] = useState<SubmissionResult | null>(null);
+  const [mobilePanel, setMobilePanel] = useState<'edit' | 'preview'>('edit');
 
-  const discount = useMemo(() => {
-    if (!listPrice || !dealPrice || dealPrice >= listPrice) return 0;
-    return Math.round((1 - dealPrice / listPrice) * 100);
-  }, [listPrice, dealPrice]);
+  const switchMobilePanel = (panel: 'edit' | 'preview') => {
+    setMobilePanel(panel);
+    window.requestAnimationFrame(() => {
+      const modalCard = document.querySelector<HTMLElement>('.bid-modal');
+      const modalHeader = document.querySelector<HTMLElement>('.bid-modal-header');
+      modalCard?.scrollTo({ top: modalHeader?.offsetHeight ?? 0, behavior: 'auto' });
+    });
+  };
+
+  const discount = !listPrice || !dealPrice || dealPrice >= listPrice
+    ? 0
+    : Math.round((1 - dealPrice / listPrice) * 100);
 
   const estimatedRank = 1 + listings.filter((item) => item.totalBid >= totalBid).length;
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -233,8 +253,15 @@ function BidModal({ targetBid, onClose }: { targetBid: number; onClose: () => vo
           <div><span className="eyebrow">FOR BRANDS</span><h2 id="bid-title">List a deal people want.</h2></div>
           <p>Your offer wins the customer. Your separate visibility bid determines where the listing appears.</p>
         </div>
+        <div className="mobile-modal-nav">
+          <div className="mobile-modal-tabs" role="tablist" aria-label="Listing editor views">
+            <button type="button" role="tab" aria-selected={mobilePanel === 'edit'} className={mobilePanel === 'edit' ? 'active' : ''} onClick={() => switchMobilePanel('edit')}>1. EDIT LISTING</button>
+            <button type="button" role="tab" aria-selected={mobilePanel === 'preview'} className={mobilePanel === 'preview' ? 'active' : ''} onClick={() => switchMobilePanel('preview')}>2. LIVE PREVIEW</button>
+          </div>
+          <button className="mobile-tab-close" type="button" onClick={onClose} aria-label="Close listing form">×</button>
+        </div>
         <div className="bid-modal-layout">
-          <form onSubmit={submit}>
+          <form className={mobilePanel === 'edit' ? 'mobile-active' : ''} onSubmit={submit}>
             <fieldset>
               <legend><span>1</span><div>Your product<small>What shoppers should understand at a glance</small></div></legend>
               <div className="field-pair">
@@ -279,13 +306,14 @@ function BidModal({ targetBid, onClose }: { targetBid: number; onClose: () => vo
               <div><span>YOUR VISIBILITY BID</span><b>{formatMoney(totalBid)}</b></div>
             </div>
             {error && <p className="form-error" role="alert">{error}</p>}
+            <button className="mobile-preview-button" type="button" onClick={() => switchMobilePanel('preview')}>PREVIEW WHAT SHOPPERS SEE <span>→</span></button>
             <button className="modal-primary" type="submit" disabled={status === 'submitting' || discount < 10 || totalBid < 5}>
               {status === 'submitting' ? 'SAVING…' : 'SAVE LISTING — NO CHARGE'} <span>↗</span>
             </button>
             <small>No charge is made in this preseason build. Existing advertisers pay only the difference when increasing a bid.</small>
           </form>
 
-          <ListingPreview productName={productName} tagline={tagline} category={category} listPrice={listPrice} dealPrice={dealPrice} couponCode={couponCode} totalBid={totalBid} />
+          <ListingPreview productName={productName} tagline={tagline} category={category} listPrice={listPrice} dealPrice={dealPrice} couponCode={couponCode} totalBid={totalBid} mobileActive={mobilePanel === 'preview'} onEdit={() => switchMobilePanel('edit')} />
         </div>
       </section>
     </div>
@@ -315,14 +343,29 @@ function DealRow({ listing, rank, onOpen }: { listing: Listing; rank: number; on
 export default function PriceFightClient() {
   const [category, setCategory] = useState<(typeof categories)[number]>('All');
   const [modal, setModal] = useState<ModalState>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
-  const ranked = useMemo(() => orderedListings.filter((listing) => category === 'All' || listing.category === category), [category]);
+  const ranked = orderedListings.filter((listing) => category === 'All' || listing.category === category);
   const currentLeader = orderedListings[0];
   const claimTopBid = currentLeader.totalBid + 1;
 
+  const openModal = (nextModal: Exclude<ModalState, null>) => {
+    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setModal(nextModal);
+  };
+
+  const closeModal = () => {
+    setModal(null);
+    window.requestAnimationFrame(() => returnFocusRef.current?.focus());
+  };
+
   useEffect(() => {
     if (!modal) return;
-    const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && setModal(null);
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setModal(null);
+      window.requestAnimationFrame(() => returnFocusRef.current?.focus());
+    };
     document.body.classList.add('modal-open');
     window.addEventListener('keydown', closeOnEscape);
     return () => {
@@ -335,10 +378,11 @@ export default function PriceFightClient() {
 
   return (
     <main id="top">
+      <div id="page-content" inert={modal ? true : undefined} aria-hidden={modal ? true : undefined}>
       <header className="site-header">
         <a className="wordmark" href="#top" aria-label="Deal Fight home">DEAL<span>FIGHT</span><sup>.LOL</sup></a>
         <nav aria-label="Main navigation"><a href="#deals">Browse deals</a><a href="#how-ranking-works">How ranking works</a><a href="#for-brands">For brands</a></nav>
-        <button className="header-cta" type="button" onClick={() => setModal({ type: 'bid', targetBid: 5 })}>FOR BRANDS: GET LISTED <span>↗</span></button>
+        <button className="header-cta" type="button" onClick={() => openModal({ type: 'bid', targetBid: 5 })}><span className="desktop-only">FOR BRANDS: </span>GET LISTED <b>↗</b></button>
       </header>
 
       <div className="preview-banner"><b>PRESEASON DEMO</b><span>Sample offers only · no live payments</span></div>
@@ -359,7 +403,7 @@ export default function PriceFightClient() {
           <div className="featured-topline"><span>FEATURED DEAL</span><span>SPONSORED #1</span></div>
           <div className="featured-brand"><span className="brand-mark large">{currentLeader.mark}</span><div><small>{currentLeader.category}</small><h2>{currentLeader.name}</h2><p>{currentLeader.tagline}</p></div></div>
           <div className="featured-offer"><span>{currentLeader.dealLabel}</span><strong>{currentLeader.dealPrice}</strong><p>Regularly <s>{currentLeader.regularPrice}</s> · <b>{currentLeader.savings}</b></p></div>
-          <button type="button" onClick={() => setModal({ type: 'deal', listing: currentLeader })}>UNLOCK THIS DEAL <span>↗</span></button>
+          <button type="button" onClick={() => openModal({ type: 'deal', listing: currentLeader })}>UNLOCK THIS DEAL <span>↗</span></button>
           <p className="featured-disclosure"><b>Why #1?</b> {currentLeader.name} has the highest visibility bid. That decides placement—not the discount.</p>
         </article>
       </section>
@@ -387,14 +431,14 @@ export default function PriceFightClient() {
           <div><span className="eyebrow">THE SPONSORED DEAL BOARD</span><h2>Pick the offer<br />that works for you.</h2></div>
           <p>Rank shows what a brand paid for visibility. The large green offer shows exactly what you receive.</p>
         </div>
-        <div className="board-key" aria-label="How to read the deal board">
+        <div className="board-key" role="note" aria-label="How to read the deal board">
           <span><b>SPONSORED #</b> Paid placement</span><span><b>GREEN OFFER</b> Your price and saving</span><span><b>VIEW DEAL</b> Full terms and coupon</span>
         </div>
-        <div className="category-group" aria-label="Filter deals by category">
+        <div className="category-group" role="group" aria-label="Filter deals by category">
           {categories.map((item) => <button type="button" key={item} className={category === item ? 'active' : ''} onClick={() => setCategory(item)}>{item}</button>)}
         </div>
         <div className="deal-board">
-          {ranked.map((listing) => <DealRow key={listing.id} listing={listing} rank={orderedListings.indexOf(listing) + 1} onOpen={() => setModal({ type: 'deal', listing })} />)}
+          {ranked.map((listing) => <DealRow key={listing.id} listing={listing} rank={listingRanks.get(listing.id) ?? orderedListings.length} onOpen={() => openModal({ type: 'deal', listing })} />)}
           {!ranked.length && <div className="empty-board">No sponsored deals in this category yet.</div>}
         </div>
         <p className="sample-note">Preseason sample data. Offers and activity shown here are illustrative.</p>
@@ -410,7 +454,7 @@ export default function PriceFightClient() {
             <li><span>2</span><div><b>Choose a visibility bid</b><p>$5 gets listed. Higher lifetime totals move your sponsored rank up.</p></div></li>
             <li><span>3</span><div><b>Preview before you continue</b><p>See exactly what customers will see—before any payment.</p></div></li>
           </ol>
-          <button className="brand-cta" type="button" onClick={() => setModal({ type: 'bid', targetBid: 5 })}>PREVIEW MY LISTING <span>↗</span></button>
+          <button className="brand-cta" type="button" onClick={() => openModal({ type: 'bid', targetBid: 5 })}>PREVIEW MY LISTING <span>↗</span></button>
         </div>
         <div className="brand-math">
           <span>THE TWO NUMBERS NEVER MIX</span>
@@ -430,10 +474,11 @@ export default function PriceFightClient() {
         </div>
       </section>
 
-      <footer><a className="wordmark inverted" href="#top">DEAL<span>FIGHT</span><sup>.LOL</sup></a><p>Brands compete for attention. Shoppers get the deal.</p><button type="button" onClick={() => setModal({ type: 'bid', targetBid: claimTopBid })}>TAKE THE TOP SPOT · {formatMoney(claimTopBid)} ↗</button></footer>
+      <footer><a className="wordmark inverted" href="#top">DEAL<span>FIGHT</span><sup>.LOL</sup></a><p>Brands compete for attention. Shoppers get the deal.</p><button type="button" onClick={() => openModal({ type: 'bid', targetBid: claimTopBid })}>TAKE THE TOP SPOT · {formatMoney(claimTopBid)} ↗</button></footer>
+      </div>
 
-      {modal?.type === 'deal' && <DealModal listing={modal.listing} onClose={() => setModal(null)} />}
-      {modal?.type === 'bid' && <BidModal targetBid={modal.targetBid} onClose={() => setModal(null)} />}
+      {modal?.type === 'deal' && <DealModal listing={modal.listing} onClose={closeModal} />}
+      {modal?.type === 'bid' && <BidModal targetBid={modal.targetBid} onClose={closeModal} />}
     </main>
   );
 }
