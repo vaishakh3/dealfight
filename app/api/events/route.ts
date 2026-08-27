@@ -1,0 +1,40 @@
+import { NextResponse } from 'next/server';
+import { getDatabase } from '@/lib/database';
+
+const allowedTypes = new Set(['claim', 'click', 'share']);
+
+export async function POST(request: Request) {
+  let body: { offerId?: unknown; type?: unknown };
+
+  try {
+    body = await request.json() as { offerId?: unknown; type?: unknown };
+  } catch {
+    return NextResponse.json({ error: 'Send a valid JSON body.' }, { status: 400 });
+  }
+
+  const offerId = typeof body.offerId === 'string' ? body.offerId.trim() : '';
+  const type = typeof body.type === 'string' ? body.type.trim() : '';
+
+  if (!/^[a-z0-9-]{2,80}$/.test(offerId) || !allowedTypes.has(type)) {
+    return NextResponse.json({ error: 'Invalid event.' }, { status: 422 });
+  }
+
+  try {
+    const database = await getDatabase();
+    await database.prepare(`
+      INSERT INTO engagement_events (id, offer_id, event_type)
+      VALUES (?, ?, ?)
+    `).bind(crypto.randomUUID(), offerId, type).run();
+
+    const result = await database.prepare(`
+      SELECT COUNT(*) AS count
+      FROM engagement_events
+      WHERE offer_id = ? AND event_type = ?
+    `).bind(offerId, type).first<{ count: number }>();
+
+    return NextResponse.json({ ok: true, count: result?.count ?? 0 });
+  } catch (error) {
+    console.error('Failed to save event', error);
+    return NextResponse.json({ ok: false }, { status: 500 });
+  }
+}
