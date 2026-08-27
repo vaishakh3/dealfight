@@ -194,7 +194,7 @@ footer { align-items: center; background: var(--orange); border-top: 1px solid v
 footer p { color: white; font-size: 12px; justify-self: center; max-width: 280px; text-align: center; }
 footer .footer-copy { justify-self: center; max-width: 390px; text-align: center; }
 footer .footer-copy p { margin: 0 auto 9px; }
-footer .footer-copy small { color: rgba(255, 255, 255, .82); display: block; font-size: 8px; line-height: 1.55; }
+footer .footer-copy small { color: white; display: block; font-size: 8px; line-height: 1.55; }
 footer .footer-copy a { color: white; font-weight: 800; text-underline-offset: 2px; }
 footer button { background: var(--ink); border: 0; color: white; cursor: pointer; font-size: 10px; font-weight: 850; justify-self: end; padding: 15px 18px; }
 
