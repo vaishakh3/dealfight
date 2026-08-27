@@ -74,6 +74,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .featured-brand { align-items: center; border-bottom: 1px solid var(--line); display: flex; gap: 16px; padding: 27px 0 22px; }
 .brand-mark { align-items: center; background: var(--ink); color: white; display: flex; flex: 0 0 auto; font-family: var(--font-geist-mono); font-size: 12px; font-weight: 900; height: 52px; justify-content: center; width: 52px; }
 .brand-mark.large { background: var(--orange); height: 64px; width: 64px; }
+.brand-mark.has-logo { background: var(--white); border: 1px solid var(--ink); overflow: hidden; padding: 3px; }
+.brand-mark.has-logo img { display: block; height: 100%; object-fit: contain; width: 100%; }
 .featured-brand small { color: var(--muted); font-family: var(--font-geist-mono); font-size: 8px; text-transform: uppercase; }
 .featured-brand h2 { font-size: 24px; letter-spacing: -.04em; margin: 2px 0 4px; }
 .featured-brand p { color: var(--muted); font-size: 12px; margin: 0; }
@@ -126,6 +128,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .rank-cell { align-items: center; border-right: 1px solid var(--ink); display: flex; flex-direction: column; justify-content: center; }
 .rank-cell b { font-family: var(--font-geist-mono); font-size: 23px; }
 .rank-cell span { color: var(--muted); font-family: var(--font-geist-mono); font-size: 6px; font-weight: 800; letter-spacing: .08em; margin-top: 4px; }
+.rank-cell small { background: var(--blue); color: white; font-family: var(--font-geist-mono); font-size: 6px; font-weight: 900; margin-top: 8px; padding: 4px 5px; text-transform: uppercase; }
 .product-cell { align-items: center; display: grid; gap: 14px; grid-template-columns: 52px 1fr; min-width: 0; padding: 15px; }
 .category-label { color: var(--muted); font-family: var(--font-geist-mono); font-size: 7px; font-weight: 750; text-transform: uppercase; }
 .product-cell h3 { font-size: 17px; letter-spacing: -.03em; margin: 2px 0 4px; }
@@ -144,7 +147,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .get-deal-button:hover { background: var(--orange); }
 .placement-disclosure { bottom: 5px; color: var(--muted); font-family: var(--font-geist-mono); font-size: 6px; left: 97px; position: absolute; }
 .empty-board { background: var(--white); padding: 50px; text-align: center; }
-.sample-note { color: var(--muted); font-family: var(--font-geist-mono); font-size: 8px; margin: 12px 0 0; }
 
 .brand-section { background: var(--blue); color: white; display: grid; gap: 8vw; grid-template-columns: 1.2fr .8fr; padding: 100px 8vw; }
 .brand-copy .eyebrow { color: var(--lime); }
@@ -366,6 +368,7 @@ footer button { background: var(--ink); border: 0; color: white; cursor: pointer
   .deal-row { grid-template-columns: 80px 1fr; }
   .rank-cell b { font-size: 25px; }
   .rank-cell span { font-size: 8px; }
+  .rank-cell small { font-size: 8px; }
   .product-cell { gap: 13px; min-height: 112px; padding: 16px; }
   .category-label { font-size: 9px; }
   .product-cell h3 { font-size: 19px; }
@@ -377,7 +380,6 @@ footer button { background: var(--ink); border: 0; color: white; cursor: pointer
   .consumer-offer > b { bottom: 9px; font-size: 9px; right: 15px; }
   .get-deal-button { font-size: 11px; min-height: 50px; }
   .placement-disclosure { font-size: 8px; line-height: 1.4; padding: 8px 11px; }
-  .sample-note { font-size: 9px; line-height: 1.5; }
   .brand-copy h2 { font-size: 57px; }
   .brand-copy > p { font-size: 16px; }
   .brand-copy li > span { height: 32px; width: 32px; }
