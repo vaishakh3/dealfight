@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-The homepage and sample leaderboard work without environment variables. Copy `.env.example` to `.env.local` and supply `DATABASE_URL` to activate submission and engagement storage.
+The homepage and sample leaderboard work without environment variables. Copy `.env.example` to `.env.local` and supply the server-only `SUPABASE_URL` and `SUPABASE_SECRET_KEY` values to activate submission and engagement storage. A legacy `SUPABASE_SERVICE_ROLE_KEY` also works, but must never be exposed to browser code.
 
 ## Vercel deployment
 
@@ -19,13 +19,15 @@ Connect the GitHub repository to Vercel and deploy `main`. No output-directory o
 
 ### Durable storage
 
-Install Neon from the Vercel Marketplace and connect it to this project. The integration normally injects `DATABASE_URL`; the app also accepts `POSTGRES_URL`. Database initialization is lazy and automatically creates the required tables and indexes on the first API request.
+Create a dedicated Supabase project, apply the migration in `supabase/migrations`, then add `SUPABASE_URL` and `SUPABASE_SECRET_KEY` as encrypted Vercel environment variables. The app uses a server-only Supabase client; no privileged key is included in the browser bundle.
+
+The migration creates constrained `submissions` and `engagement_events` tables, targeted indexes, an `updated_at` trigger, and row-level security. The public `anon` and `authenticated` roles have no direct table access; writes go through validated Next.js API routes.
 
 Without a database, the public page still renders and bid submissions return a clear `DATABASE_NOT_CONNECTED` response instead of crashing the deployment.
 
 ## Product data
 
-The visible preseason listings in `lib/leaderboard-data.ts` are fictional sample inventory and are labelled as such. Real bid intents are stored with `pending_payment` status once Neon is connected.
+The visible preseason board contains only three fictional examples with $15, $10, and $5 visibility bids. They are explicitly labelled as examples and do not claim real advertiser or shopper activity. Real bid intents are stored with `pending_payment` status once Supabase is connected.
 
 ## Payment handoff
 

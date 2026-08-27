@@ -33,22 +33,18 @@ const preciseDollarFormatter = new Intl.NumberFormat('en-US', {
   currency: 'USD',
   maximumFractionDigits: 2,
 });
-const compactNumberFormatter = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
 const orderedListings = [...listings].sort((a, b) => b.totalBid - a.totalBid);
 const listingRanks = new Map(orderedListings.map((listing, index) => [listing.id, index + 1]));
+const boardCategories = ['All', ...new Set(orderedListings.map((listing) => listing.category))];
 const placementChoices = [
   { label: 'Top spot', detail: 'Above the current #1', amount: orderedListings[0].totalBid + 1 },
-  { label: 'Top 3', detail: 'Above the current #3', amount: orderedListings[2].totalBid + 1 },
-  { label: 'Top 5', detail: 'Above the current #5', amount: orderedListings[4].totalBid + 1 },
+  { label: 'Top two', detail: 'Above the current #2', amount: orderedListings[1].totalBid + 1 },
+  { label: 'Top three', detail: 'Above the current #3', amount: orderedListings[2].totalBid + 1 },
   { label: 'Join board', detail: 'Get your first listing live', amount: 5 },
 ];
 
 function formatMoney(value: number) {
   return (value % 1 === 0 ? wholeDollarFormatter : preciseDollarFormatter).format(value);
-}
-
-function formatCompact(value: number) {
-  return compactNumberFormatter.format(value);
 }
 
 async function recordEvent(offerId: string, type: 'claim' | 'click' | 'share') {
@@ -333,9 +329,9 @@ function DealRow({ listing, rank, onOpen }: { listing: Listing; rank: number; on
         <div><strong>{listing.dealPrice}</strong><small>Regularly <s>{listing.regularPrice}</s></small></div>
         <b>{listing.savings}</b>
       </div>
-      <div className="social-proof"><b>{formatCompact(listing.claims)}</b><span>deal claims</span></div>
+      <div className="social-proof"><b>DEMO</b><span>example listing</span></div>
       <button className="get-deal-button" type="button" onClick={onOpen}>VIEW DEAL <span>↗</span></button>
-      <div className="placement-disclosure">Rank #{rank} because {listing.name}&apos;s visibility bid is {formatMoney(listing.totalBid)} · updated {listing.age}</div>
+      <div className="placement-disclosure">Rank #{rank} because {listing.name}&apos;s example visibility bid is {formatMoney(listing.totalBid)}</div>
     </article>
   );
 }
@@ -410,7 +406,7 @@ export default function PriceFightClient() {
 
       <section className="consumer-proof" aria-label="Marketplace promises">
         <div><strong>70%</strong><span>biggest sample saving</span></div>
-        <div><strong>{listings.length}</strong><span>exclusive offers</span></div>
+        <div><strong>{listings.length}</strong><span>example offers</span></div>
         <div><strong>10%+</strong><span>minimum shopper discount</span></div>
         <div><strong>100%</strong><span>sponsored ranks disclosed</span></div>
       </section>
@@ -435,13 +431,13 @@ export default function PriceFightClient() {
           <span><b>SPONSORED #</b> Paid placement</span><span><b>GREEN OFFER</b> Your price and saving</span><span><b>VIEW DEAL</b> Full terms and coupon</span>
         </div>
         <div className="category-group" role="group" aria-label="Filter deals by category">
-          {categories.map((item) => <button type="button" key={item} className={category === item ? 'active' : ''} onClick={() => setCategory(item)}>{item}</button>)}
+          {boardCategories.map((item) => <button type="button" key={item} className={category === item ? 'active' : ''} onClick={() => setCategory(item as (typeof categories)[number])}>{item}</button>)}
         </div>
         <div className="deal-board">
           {ranked.map((listing) => <DealRow key={listing.id} listing={listing} rank={listingRanks.get(listing.id) ?? orderedListings.length} onOpen={() => openModal({ type: 'deal', listing })} />)}
           {!ranked.length && <div className="empty-board">No sponsored deals in this category yet.</div>}
         </div>
-        <p className="sample-note">Preseason sample data. Offers and activity shown here are illustrative.</p>
+        <p className="sample-note">Three fictional preseason examples—not live advertisers or claimed deals.</p>
       </section>
 
       <section className="brand-section" id="for-brands">
@@ -460,7 +456,7 @@ export default function PriceFightClient() {
           <span>THE TWO NUMBERS NEVER MIX</span>
           <div className="math-card offer-math"><small>WHAT SHOPPERS GET</small><b>50% OFF</b><p>$50 instead of $100</p></div>
           <div className="math-divider">NOT THE SAME AS</div>
-          <div className="math-card bid-math"><small>WHAT YOU PAY FOR PLACEMENT</small><b>$381 BID</b><p>Estimated sponsored rank #5</p></div>
+          <div className="math-card bid-math"><small>WHAT YOU PAY FOR PLACEMENT</small><b>$11 BID</b><p>Estimated sponsored rank #2</p></div>
           <p>Already listed? Increase your total and pay only the difference.</p>
         </div>
       </section>

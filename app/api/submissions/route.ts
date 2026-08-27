@@ -90,13 +90,18 @@ export async function POST(request: Request) {
 
   try {
     const database = await getDatabase();
-    const previousBids = await database`
-      SELECT COALESCE(MAX(target_bid_cents), 0)::int AS total
-      FROM submissions
-      WHERE normalized_url = ${normalizedUrl} AND status = 'paid'
-    ` as Array<{ total: number }>;
+    const { data: previousBid, error: previousBidError } = await database
+      .from('submissions')
+      .select('target_bid_cents')
+      .eq('normalized_url', normalizedUrl)
+      .eq('status', 'paid')
+      .order('target_bid_cents', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    previousBidCents = Number(previousBids[0]?.total ?? 0);
+    if (previousBidError) throw previousBidError;
+
+    previousBidCents = Number(previousBid?.target_bid_cents ?? 0);
     if (targetBidCents <= previousBidCents) {
       return NextResponse.json({
         error: `Your new total must be higher than the existing paid bid of $${(previousBidCents / 100).toFixed(2)}.`,
@@ -106,25 +111,32 @@ export async function POST(request: Request) {
 
     const listPriceCents = Math.round(listPrice * 100);
     const dealPriceCents = Math.round(dealPrice * 100);
-    await database`
-      INSERT INTO submissions (
-        id, product_name, product_url, normalized_url, email, tagline, list_price_cents,
-        fight_price_cents, discount_percent, coupon_code, category, target_bid_cents,
-        amount_due_cents, status
-      ) VALUES (
-        ${id}, ${productName}, ${productUrl}, ${normalizedUrl}, ${email}, ${tagline},
-        ${listPriceCents}, ${dealPriceCents}, ${discountPercent}, ${couponCode}, ${category},
-        ${targetBidCents}, ${amountDueCents}, 'pending_payment'
-      )
-    `;
+    const { error: insertError } = await database.from('submissions').insert({
+      id,
+      product_name: productName,
+      product_url: productUrl,
+      normalized_url: normalizedUrl,
+      email,
+      tagline,
+      list_price_cents: listPriceCents,
+      fight_price_cents: dealPriceCents,
+      discount_percent: discountPercent,
+      coupon_code: couponCode,
+      category,
+      target_bid_cents: targetBidCents,
+      amount_due_cents: amountDueCents,
+      status: 'pending_payment',
+    });
+
+    if (insertError) throw insertError;
   } catch (error) {
-    console.error('Failed to save submission', error);
     if (isDatabaseUnavailable(error)) {
       return NextResponse.json({
-        error: 'Bid storage is not connected yet. Add Neon from the Vercel Marketplace, then redeploy.',
+        error: 'Bid storage is not connected yet. Add the Supabase server credentials in Vercel, then redeploy.',
         code: 'DATABASE_NOT_CONNECTED',
       }, { status: 503 });
     }
+    console.error('Failed to save submission', error);
     return NextResponse.json({ error: 'The deal board could not save that entry. Try again.' }, { status: 500 });
   }
 

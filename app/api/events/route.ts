@@ -23,21 +23,27 @@ export async function POST(request: Request) {
 
   try {
     const database = await getDatabase();
-    const id = crypto.randomUUID();
-    await database`
-      INSERT INTO engagement_events (id, offer_id, event_type)
-      VALUES (${id}, ${offerId}, ${type})
-    `;
+    const { error: insertError } = await database.from('engagement_events').insert({
+      offer_id: offerId,
+      event_type: type,
+    });
 
-    const result = await database`
-      SELECT COUNT(*)::int AS count
-      FROM engagement_events
-      WHERE offer_id = ${offerId} AND event_type = ${type}
-    ` as Array<{ count: number }>;
+    if (insertError) throw insertError;
 
-    return NextResponse.json({ ok: true, count: result[0]?.count ?? 0 });
+    const { count, error: countError } = await database
+      .from('engagement_events')
+      .select('*', { count: 'exact', head: true })
+      .eq('offer_id', offerId)
+      .eq('event_type', type);
+
+    if (countError) throw countError;
+
+    return NextResponse.json({ ok: true, count: count ?? 0 });
   } catch (error) {
+    if (isDatabaseUnavailable(error)) {
+      return NextResponse.json({ ok: false }, { status: 503 });
+    }
     console.error('Failed to save event', error);
-    return NextResponse.json({ ok: false }, { status: isDatabaseUnavailable(error) ? 503 : 500 });
+    return NextResponse.json({ ok: false }, { status: 500 });
   }
 }
