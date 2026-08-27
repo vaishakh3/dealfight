@@ -1,7 +1,7 @@
 export type Listing = {
   id: string;
   name: string;
-  logo: string;
+  logo?: string;
   tagline: string;
   category: string;
   totalBid: number;

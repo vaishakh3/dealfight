@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { categories, listings, type Listing } from '@/lib/leaderboard-data';
+import { categories, listings as launchListings, type Listing } from '@/lib/leaderboard-data';
 
 type BidModalState = {
   type: 'bid';
@@ -34,15 +34,8 @@ const preciseDollarFormatter = new Intl.NumberFormat('en-US', {
   currency: 'USD',
   maximumFractionDigits: 2,
 });
-const orderedListings = [...listings].sort((a, b) => b.totalBid - a.totalBid);
-const listingRanks = new Map(orderedListings.map((listing, index) => [listing.id, index + 1]));
-const boardCategories = ['All', ...new Set(orderedListings.map((listing) => listing.category))];
-const placementChoices = [
-  { label: 'Top spot', detail: 'Above the current #1', amount: orderedListings[0].totalBid + 1 },
-  { label: 'Top two', detail: 'Above the current #2', amount: orderedListings[1].totalBid + 1 },
-  { label: 'Top three', detail: 'Above the current #3', amount: orderedListings[2].totalBid + 1 },
-  { label: 'Join board', detail: 'Get your first listing live', amount: 5 },
-];
+
+type PlacementChoice = { label: string; detail: string; amount: number };
 
 function formatMoney(value: number) {
   return (value % 1 === 0 ? wholeDollarFormatter : preciseDollarFormatter).format(value);
@@ -50,10 +43,11 @@ function formatMoney(value: number) {
 
 function BrandMark({ listing, large = false }: { listing: Listing; large?: boolean }) {
   const size = large ? 64 : 52;
+  const initials = listing.name.trim().split(/\s+/).map((word) => word[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <span className={`brand-mark has-logo ${large ? 'large' : ''}`} aria-hidden="true">
-      <Image src={listing.logo} alt="" width={size} height={size} sizes={`${size}px`} />
+    <span className={`brand-mark ${listing.logo ? 'has-logo' : ''} ${large ? 'large' : ''}`} aria-hidden="true">
+      {listing.logo ? <Image src={listing.logo} alt="" width={size} height={size} sizes={`${size}px`} /> : initials}
     </span>
   );
 }
@@ -79,9 +73,8 @@ async function recordEvent(offerId: string, type: 'claim' | 'click' | 'share') {
   }
 }
 
-function DealModal({ listing, onClose }: { listing: Listing; onClose: () => void }) {
+function DealModal({ listing, rank, onClose }: { listing: Listing; rank: number; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
-  const rank = listingRanks.get(listing.id) ?? orderedListings.length;
 
   const copyCode = async () => {
     try {
@@ -134,6 +127,7 @@ function ListingPreview({
   dealPrice,
   couponCode,
   totalBid,
+  boardListings,
   mobileActive,
   onEdit,
 }: {
@@ -144,11 +138,12 @@ function ListingPreview({
   dealPrice: number;
   couponCode: string;
   totalBid: number;
+  boardListings: Listing[];
   mobileActive: boolean;
   onEdit: () => void;
 }) {
   const discount = listPrice > dealPrice && dealPrice > 0 ? Math.round((1 - dealPrice / listPrice) * 100) : 0;
-  const estimatedRank = 1 + listings.filter((item) => item.totalBid >= totalBid).length;
+  const estimatedRank = 1 + boardListings.filter((item) => item.totalBid >= totalBid).length;
   const initials = productName.trim().split(/\s+/).map((word) => word[0]).join('').slice(0, 2).toUpperCase() || 'YO';
 
   return (
@@ -180,7 +175,7 @@ function ListingPreview({
   );
 }
 
-function BidModal({ targetBid, onClose }: { targetBid: number; onClose: () => void }) {
+function BidModal({ targetBid, boardListings, placementChoices, onClose }: { targetBid: number; boardListings: Listing[]; placementChoices: PlacementChoice[]; onClose: () => void }) {
   const [productName, setProductName] = useState('');
   const [tagline, setTagline] = useState('');
   const [category, setCategory] = useState('AI');
@@ -206,7 +201,7 @@ function BidModal({ targetBid, onClose }: { targetBid: number; onClose: () => vo
     ? 0
     : Math.round((1 - dealPrice / listPrice) * 100);
 
-  const estimatedRank = 1 + listings.filter((item) => item.totalBid >= totalBid).length;
+  const estimatedRank = 1 + boardListings.filter((item) => item.totalBid >= totalBid).length;
   const continueToCheckout = async () => {
     if (!result) return;
     setError('');
@@ -354,7 +349,7 @@ function BidModal({ targetBid, onClose }: { targetBid: number; onClose: () => vo
             <small>No charge happens on this step. You&apos;ll review the exact placement balance in secure checkout before paying.</small>
           </form>
 
-          <ListingPreview productName={productName} tagline={tagline} category={category} listPrice={listPrice} dealPrice={dealPrice} couponCode={couponCode} totalBid={totalBid} mobileActive={mobilePanel === 'preview'} onEdit={() => switchMobilePanel('edit')} />
+          <ListingPreview productName={productName} tagline={tagline} category={category} listPrice={listPrice} dealPrice={dealPrice} couponCode={couponCode} totalBid={totalBid} boardListings={boardListings} mobileActive={mobilePanel === 'preview'} onEdit={() => switchMobilePanel('edit')} />
         </div>
       </section>
     </div>
@@ -381,12 +376,21 @@ function DealRow({ listing, rank, onOpen }: { listing: Listing; rank: number; on
   );
 }
 
-export default function PriceFightClient() {
+export default function PriceFightClient({ initialListings = launchListings }: { initialListings?: Listing[] }) {
   const [category, setCategory] = useState<(typeof categories)[number]>('All');
   const [modal, setModal] = useState<ModalState>(null);
   const [checkoutNotice, setCheckoutNotice] = useState<'paid' | 'cancelled' | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
+  const orderedListings = [...initialListings].sort((a, b) => b.totalBid - a.totalBid);
+  const listingRanks = new Map(orderedListings.map((listing, index) => [listing.id, index + 1]));
+  const boardCategories = ['All', ...new Set(orderedListings.map((listing) => listing.category))];
+  const placementChoices: PlacementChoice[] = [
+    { label: 'Top spot', detail: 'Above the current #1', amount: orderedListings[0].totalBid + 1 },
+    { label: 'Top two', detail: 'Above the current #2', amount: orderedListings[1].totalBid + 1 },
+    { label: 'Top three', detail: 'Above the current #3', amount: orderedListings[2].totalBid + 1 },
+    { label: 'Join board', detail: 'Get your first listing live', amount: 5 },
+  ];
   const ranked = orderedListings.filter((listing) => category === 'All' || listing.category === category);
   const currentLeader = orderedListings[0];
   const claimTopBid = currentLeader.totalBid + 1;
@@ -475,7 +479,7 @@ export default function PriceFightClient() {
 
       <section className="consumer-proof" aria-label="Marketplace promises">
         <div><strong>70%</strong><span>largest listed saving</span></div>
-        <div><strong>{listings.length}</strong><span>offers on the board</span></div>
+        <div><strong>{orderedListings.length}</strong><span>offers on the board</span></div>
         <div><strong>10%+</strong><span>minimum shopper discount</span></div>
         <div><strong>100%</strong><span>sponsored ranks disclosed</span></div>
       </section>
@@ -541,8 +545,8 @@ export default function PriceFightClient() {
       <footer><a className="wordmark inverted" href="#top" aria-label="Deal Fight home"><DealFightWordmark /></a><p>Brands compete for attention. Shoppers get the deal.</p><button type="button" onClick={() => openModal({ type: 'bid', targetBid: claimTopBid })}>TAKE THE TOP SPOT · {formatMoney(claimTopBid)} ↗</button></footer>
       </div>
 
-      {modal?.type === 'deal' && <DealModal listing={modal.listing} onClose={closeModal} />}
-      {modal?.type === 'bid' && <BidModal targetBid={modal.targetBid} onClose={closeModal} />}
+      {modal?.type === 'deal' && <DealModal listing={modal.listing} rank={listingRanks.get(modal.listing.id) ?? orderedListings.length} onClose={closeModal} />}
+      {modal?.type === 'bid' && <BidModal targetBid={modal.targetBid} boardListings={orderedListings} placementChoices={placementChoices} onClose={closeModal} />}
     </main>
   );
 }
