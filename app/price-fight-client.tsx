@@ -188,7 +188,7 @@ function BidModal({ targetBid, onClose }: { targetBid: number; onClose: () => vo
   const [listPrice, setListPrice] = useState(100);
   const [dealPrice, setDealPrice] = useState(50);
   const [totalBid, setTotalBid] = useState(targetBid);
-  const [status, setStatus] = useState<'idle' | 'submitting'>('idle');
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'checkout'>('idle');
   const [error, setError] = useState('');
   const [result, setResult] = useState<SubmissionResult | null>(null);
   const [mobilePanel, setMobilePanel] = useState<'edit' | 'preview'>('edit');
@@ -207,6 +207,28 @@ function BidModal({ targetBid, onClose }: { targetBid: number; onClose: () => vo
     : Math.round((1 - dealPrice / listPrice) * 100);
 
   const estimatedRank = 1 + listings.filter((item) => item.totalBid >= totalBid).length;
+  const continueToCheckout = async () => {
+    if (!result) return;
+    setError('');
+    setStatus('checkout');
+
+    try {
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submissionId: result.submissionId }),
+      });
+      const payload = await response.json() as { checkoutUrl?: string; error?: string };
+      if (!response.ok || !payload.checkoutUrl) {
+        throw new Error(payload.error || 'Secure checkout could not be opened.');
+      }
+      window.location.assign(payload.checkoutUrl);
+    } catch (checkoutError) {
+      setError(checkoutError instanceof Error ? checkoutError.message : 'Secure checkout could not be opened.');
+      setStatus('idle');
+    }
+  };
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
@@ -245,16 +267,20 @@ function BidModal({ targetBid, onClose }: { targetBid: number; onClose: () => vo
         <section className="modal-card success-view" role="dialog" aria-modal="true" aria-labelledby="bid-title">
           <button className="modal-close" type="button" onClick={onClose} aria-label="Close dialog">×</button>
           <span className="success-check">✓</span>
-          <span className="eyebrow">LISTING REQUEST RECEIVED</span>
-          <h2 id="bid-title">Your {formatMoney(result.targetBidCents / 100)} visibility bid is reserved.</h2>
+          <span className="eyebrow">LISTING READY FOR CHECKOUT</span>
+          <h2 id="bid-title">Secure your {formatMoney(result.targetBidCents / 100)} visibility bid.</h2>
           <p>Your customer offer is <strong>{result.discountPercent}% off</strong>. It stays separate from your placement spend.</p>
           <div className="success-summary">
             <div><span>Total visibility bid</span><b>{formatMoney(result.targetBidCents / 100)}</b></div>
             <div><span>Previously paid</span><b>{formatMoney(result.previousBidCents / 100)}</b></div>
             <div><span>Balance at checkout</span><b>{formatMoney(result.amountDueCents / 100)}</b></div>
           </div>
-          <div className="success-note">We&apos;ll review the deal and email you to confirm placement and payment.</div>
-          <button className="modal-primary" type="button" onClick={onClose}>Back to the deals</button>
+          <div className="success-note">Dodo&apos;s secure checkout collects the balance below. Taxes, if required, are shown separately before payment. Your deal is reviewed before it appears on the board.</div>
+          {error && <p className="form-error" role="alert">{error}</p>}
+          <button className="modal-primary" type="button" onClick={continueToCheckout} disabled={status === 'checkout'}>
+            {status === 'checkout' ? 'OPENING SECURE CHECKOUT…' : `CONTINUE · ${formatMoney(result.amountDueCents / 100)} BALANCE`} <span>↗</span>
+          </button>
+          <button className="success-secondary" type="button" onClick={onClose}>Not now — back to the deals</button>
         </section>
       </div>
     );
@@ -323,9 +349,9 @@ function BidModal({ targetBid, onClose }: { targetBid: number; onClose: () => vo
             {error && <p className="form-error" role="alert">{error}</p>}
             <button className="mobile-preview-button" type="button" onClick={() => switchMobilePanel('preview')}>PREVIEW WHAT SHOPPERS SEE <span>→</span></button>
             <button className="modal-primary" type="submit" disabled={status === 'submitting' || discount < 10 || totalBid < 5}>
-              {status === 'submitting' ? 'SUBMITTING…' : 'SUBMIT LISTING REQUEST'} <span>↗</span>
+              {status === 'submitting' ? 'SAVING YOUR LISTING…' : 'REVIEW & CONTINUE TO PAYMENT'} <span>↗</span>
             </button>
-            <small>Your listing is reviewed before it goes live. We&apos;ll confirm placement and payment by email.</small>
+            <small>No charge happens on this step. You&apos;ll review the exact placement balance in secure checkout before paying.</small>
           </form>
 
           <ListingPreview productName={productName} tagline={tagline} category={category} listPrice={listPrice} dealPrice={dealPrice} couponCode={couponCode} totalBid={totalBid} mobileActive={mobilePanel === 'preview'} onEdit={() => switchMobilePanel('edit')} />
@@ -358,6 +384,7 @@ function DealRow({ listing, rank, onOpen }: { listing: Listing; rank: number; on
 export default function PriceFightClient() {
   const [category, setCategory] = useState<(typeof categories)[number]>('All');
   const [modal, setModal] = useState<ModalState>(null);
+  const [checkoutNotice, setCheckoutNotice] = useState<'paid' | 'cancelled' | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
   const ranked = orderedListings.filter((listing) => category === 'All' || listing.category === category);
@@ -373,6 +400,27 @@ export default function PriceFightClient() {
     setModal(null);
     window.requestAnimationFrame(() => returnFocusRef.current?.focus());
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get('checkout');
+    const paymentStatus = params.get('status');
+    const notice = checkout === 'cancelled'
+      ? 'cancelled'
+      : checkout === 'return' || paymentStatus === 'succeeded'
+        ? 'paid'
+        : null;
+    if (notice) window.setTimeout(() => setCheckoutNotice(notice), 0);
+    if (checkout || paymentStatus) {
+      params.delete('checkout');
+      params.delete('status');
+      params.delete('payment_id');
+      params.delete('email');
+      params.delete('submission');
+      const nextSearch = params.toString();
+      window.history.replaceState({}, '', `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`);
+    }
+  }, []);
 
   useEffect(() => {
     if (!modal) return;
@@ -401,6 +449,8 @@ export default function PriceFightClient() {
       </header>
 
       <div className="preview-banner"><b>DEALS FIRST</b><span>Brands bid for visibility. You compare the actual offer.</span></div>
+      {checkoutNotice === 'paid' && <div className="checkout-return-banner success" role="status"><b>PAYMENT RECEIVED</b><span>Your bid is being verified. We&apos;ll review the deal before it appears on the board.</span><button type="button" onClick={() => setCheckoutNotice(null)} aria-label="Dismiss payment message">×</button></div>}
+      {checkoutNotice === 'cancelled' && <div className="checkout-return-banner cancelled" role="status"><b>NO PAYMENT MADE</b><span>Your listing request is saved. Submit it again whenever you&apos;re ready to secure the bid.</span><button type="button" onClick={() => setCheckoutNotice(null)} aria-label="Dismiss payment message">×</button></div>}
 
       <section className="consumer-hero">
         <div className="hero-copy">

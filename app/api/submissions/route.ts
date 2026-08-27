@@ -108,6 +108,11 @@ export async function POST(request: Request) {
       }, { status: 422 });
     }
     amountDueCents = targetBidCents - previousBidCents;
+    if (previousBidCents > 0 && amountDueCents < 500) {
+      return NextResponse.json({
+        error: `Bid increases have a $5 minimum. Set a total of at least $${((previousBidCents + 500) / 100).toFixed(2)}.`,
+      }, { status: 422 });
+    }
 
     const listPriceCents = Math.round(listPrice * 100);
     const dealPriceCents = Math.round(dealPrice * 100);

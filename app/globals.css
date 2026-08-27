@@ -52,6 +52,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .preview-banner { align-items: center; background: var(--blue); color: white; display: flex; font-family: var(--font-geist-mono); font-size: 10px; gap: 14px; justify-content: center; min-height: 34px; padding: 8px 4vw; text-align: center; }
 .preview-banner b { background: var(--lime); color: var(--ink); padding: 3px 6px; }
+.checkout-return-banner { align-items: center; border-bottom: 1px solid var(--ink); display: grid; gap: 12px; grid-template-columns: auto 1fr auto; padding: 12px 4vw; }
+.checkout-return-banner.success { background: var(--lime); }
+.checkout-return-banner.cancelled { background: #ffe2dc; }
+.checkout-return-banner b { font-family: var(--font-geist-mono); font-size: 9px; letter-spacing: .07em; }
+.checkout-return-banner span { font-size: 11px; }
+.checkout-return-banner button { background: transparent; border: 0; cursor: pointer; font-size: 22px; line-height: 1; min-height: 36px; min-width: 36px; }
 
 .eyebrow { display: block; font-family: var(--font-geist-mono); font-size: 10px; font-weight: 800; letter-spacing: .13em; margin-bottom: 18px; text-transform: uppercase; }
 
@@ -259,6 +265,7 @@ footer button { background: var(--ink); border: 0; color: white; cursor: pointer
 .checkout-clarity span { color: var(--muted); font-family: var(--font-geist-mono); font-size: 6px; }
 .checkout-clarity b { font-size: 13px; margin-top: 4px; }
 .form-error { background: #ffe2dc; border: 1px solid var(--orange); color: #8b210c; font-size: 10px; margin: 0; padding: 10px; }
+.success-secondary { background: transparent; border: 0; cursor: pointer; font-size: 9px; font-weight: 800; margin-top: 13px; min-height: 40px; text-decoration: underline; text-underline-offset: 4px; width: 100%; }
 .bid-modal form > small { color: var(--muted); font-size: 8px; line-height: 1.45; }
 
 .listing-preview { background: #eae6da; border-left: 1px solid var(--ink); padding: 28px 24px; position: sticky; top: 0; }
