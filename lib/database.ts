@@ -14,17 +14,27 @@ let client: SupabaseClient<Database> | null = null;
 
 export function getDatabase() {
   const projectUrl = process.env.SUPABASE_URL;
-  const secretKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const privilegedKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+  const databaseSecret = process.env.DEALFIGHT_DATABASE_SECRET;
+  const apiKey = privilegedKey ?? publishableKey;
 
-  if (!projectUrl || !secretKey) throw new DatabaseUnavailableError();
+  if (!projectUrl || !apiKey || (!privilegedKey && !databaseSecret)) {
+    throw new DatabaseUnavailableError();
+  }
 
   if (!client) {
-    client = createClient<Database>(projectUrl, secretKey, {
+    client = createClient<Database>(projectUrl, apiKey, {
       auth: {
         autoRefreshToken: false,
         detectSessionInUrl: false,
         persistSession: false,
       },
+      ...(databaseSecret ? {
+        global: {
+          headers: { 'x-dealfight-secret': databaseSecret },
+        },
+      } : {}),
     });
   }
 
