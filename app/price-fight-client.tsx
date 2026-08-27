@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { FormEvent, useEffect, useRef, useState } from 'react';
+import { CtaArrow } from '@/app/cta-arrow';
 import { categories, listings as launchListings, type Listing } from '@/lib/leaderboard-data';
 
 type BidModalState = {
@@ -109,7 +110,7 @@ function DealModal({ listing, rank, onClose }: { listing: Listing; rank: number;
           <button type="button" onClick={copyCode}>{copied ? 'COPIED ✓' : 'COPY CODE'}</button>
         </div>
         <a className="modal-primary" href={listing.url} target="_blank" rel="noopener noreferrer sponsored" onClick={() => recordEvent(listing.id, 'click')}>
-          Go to {listing.name} <span>↗</span>
+          Go to {listing.name} <CtaArrow />
         </a>
         <div className="sponsor-explainer">
           <b>Why is this sponsored #{rank}?</b>
@@ -162,7 +163,7 @@ function ListingPreview({
           <p><b>{dealPrice > 0 ? formatMoney(dealPrice) : '$—'}</b> <s>{listPrice > 0 ? formatMoney(listPrice) : '$—'}</s></p>
           <small>Code: {couponCode || 'YOURCODE'}</small>
         </div>
-        <div className="preview-cta">GET THIS DEAL ↗</div>
+        <div className="preview-cta">GET THIS DEAL <CtaArrow /></div>
         <div className="preview-disclosure">Sponsored rank based on a {formatMoney(totalBid || 0)} visibility bid</div>
       </article>
       <div className="separation-note">
@@ -277,7 +278,7 @@ function BidModal({ targetBid, boardListings, placementChoices, onClose }: { tar
           </div>
           {error && <p className="form-error" role="alert">{error}</p>}
           <button className="modal-primary" type="button" onClick={continueToCheckout} disabled={status === 'checkout'}>
-            {status === 'checkout' ? 'OPENING SECURE CHECKOUT…' : `CONTINUE · ${formatMoney(result.amountDueCents / 100)} BALANCE`} <span>↗</span>
+            {status === 'checkout' ? 'OPENING SECURE CHECKOUT…' : `CONTINUE · ${formatMoney(result.amountDueCents / 100)} BALANCE`} <CtaArrow />
           </button>
           <p className="payment-policy-note">By continuing, you confirm the offer is accurate and agree to our <Link href="/refund-policy" target="_blank">refund policy</Link>. Once a listing is published, visibility payments are non-refundable except for duplicate or incorrect charges, non-delivery, fraud, legal requirements, or another exception stated in that policy.</p>
           <button className="success-secondary" type="button" onClick={onClose}>Not now — back to the deals</button>
@@ -349,7 +350,7 @@ function BidModal({ targetBid, boardListings, placementChoices, onClose }: { tar
             {error && <p className="form-error" role="alert">{error}</p>}
             <button className="mobile-preview-button" type="button" onClick={() => switchMobilePanel('preview')}>PREVIEW WHAT SHOPPERS SEE <span>→</span></button>
             <button className="modal-primary" type="submit" disabled={status === 'submitting' || discount < 10 || totalBid < 5}>
-              {status === 'submitting' ? 'SAVING YOUR LISTING…' : 'REVIEW & CONTINUE TO PAYMENT'} <span>↗</span>
+              {status === 'submitting' ? 'SAVING YOUR LISTING…' : 'REVIEW & CONTINUE TO PAYMENT'} <CtaArrow />
             </button>
             <small>No charge happens on this step. You&apos;ll review the exact placement balance in secure checkout before paying.</small>
           </form>
@@ -375,7 +376,7 @@ function DealRow({ listing, rank, onOpen }: { listing: Listing; rank: number; on
         <b>{listing.savings}</b>
       </div>
       <div className="social-proof"><b>{formatMoney(listing.totalBid)}</b><span>visibility bid</span></div>
-      <button className="get-deal-button" type="button" onClick={onOpen}>VIEW DEAL <span>↗</span></button>
+      <button className="get-deal-button" type="button" onClick={onOpen}>VIEW DEAL <CtaArrow /></button>
       <div className="placement-disclosure">Rank #{rank} because {listing.name}&apos;s visibility bid is {formatMoney(listing.totalBid)}</div>
     </article>
   );
@@ -454,7 +455,7 @@ export default function PriceFightClient({ initialListings = launchListings }: {
       <header className="site-header">
         <a className="wordmark" href="#top" aria-label="DEALFIGHT.LOL home"><DealFightWordmark priority /></a>
         <nav aria-label="Main navigation"><a href="#deals">Browse deals</a><a href="#how-ranking-works">How ranking works</a><a href="#for-brands">For brands</a></nav>
-        <button className="header-cta" type="button" onClick={() => openModal({ type: 'bid', targetBid: 5 })}><span className="desktop-only">FOR BRANDS: </span>GET LISTED <b>↗</b></button>
+        <button className="header-cta" type="button" onClick={() => openModal({ type: 'bid', targetBid: 5 })}><span className="desktop-only">FOR BRANDS: </span>GET LISTED <b><CtaArrow /></b></button>
       </header>
 
       <div className="preview-banner"><b>DEALS FIRST</b><span>Brands bid for visibility. You compare the actual offer.</span></div>
@@ -477,7 +478,7 @@ export default function PriceFightClient({ initialListings = launchListings }: {
           <div className="featured-topline"><span>FEATURED DEAL</span><span>SPONSORED #1</span></div>
           <div className="featured-brand"><BrandMark listing={currentLeader} large /><div><small>{currentLeader.category}</small><h2>{currentLeader.name}</h2><p>{currentLeader.tagline}</p></div></div>
           <div className="featured-offer"><span>{currentLeader.dealLabel}</span><strong>{currentLeader.dealPrice}</strong><p>Regularly <s>{currentLeader.regularPrice}</s> · <b>{currentLeader.savings}</b></p></div>
-          <button type="button" onClick={() => openModal({ type: 'deal', listing: currentLeader })}>UNLOCK THIS DEAL <span>↗</span></button>
+          <button type="button" onClick={() => openModal({ type: 'deal', listing: currentLeader })}>UNLOCK THIS DEAL <CtaArrow /></button>
           <p className="featured-disclosure"><b>Why #1?</b> {currentLeader.name} has the highest visibility bid. That decides placement—not the discount.</p>
         </article>
       </section>
@@ -496,7 +497,7 @@ export default function PriceFightClient({ initialListings = launchListings }: {
           <span className="equation-plus">+</span>
           <article><span>FOR SHOPPERS</span><b>%</b><h3>Exclusive offer</h3><p>A separate discount of at least 10% gives you a reason to click.</p></article>
           <span className="equation-equals">=</span>
-          <article className="equation-result"><span>THE RESULT</span><b>↗</b><h3>Useful sponsored deals</h3><p>Clear paid rankings without pretending the highest bidder has the best discount.</p></article>
+          <article className="equation-result"><span>THE RESULT</span><b><CtaArrow /></b><h3>Useful sponsored deals</h3><p>Clear paid rankings without pretending the highest bidder has the best discount.</p></article>
         </div>
       </section>
 
@@ -527,7 +528,7 @@ export default function PriceFightClient({ initialListings = launchListings }: {
             <li><span>2</span><div><b>Choose a visibility bid</b><p>$5 gets listed. Higher lifetime totals move your sponsored rank up.</p></div></li>
             <li><span>3</span><div><b>Preview before you continue</b><p>See exactly what customers will see before submitting your listing.</p></div></li>
           </ol>
-          <button className="brand-cta" type="button" onClick={() => openModal({ type: 'bid', targetBid: 5 })}>PREVIEW MY LISTING <span>↗</span></button>
+          <button className="brand-cta" type="button" onClick={() => openModal({ type: 'bid', targetBid: 5 })}>PREVIEW MY LISTING <CtaArrow /></button>
         </div>
         <div className="brand-math">
           <span>THE TWO NUMBERS NEVER MIX</span>
@@ -561,7 +562,7 @@ export default function PriceFightClient({ initialListings = launchListings }: {
             <Link href="/refund-policy">Refund policy</Link>
           </small>
         </div>
-        <button type="button" onClick={() => openModal({ type: 'bid', targetBid: claimTopBid })}>TAKE THE TOP SPOT · {formatMoney(claimTopBid)} ↗</button>
+        <button type="button" onClick={() => openModal({ type: 'bid', targetBid: claimTopBid })}>TAKE THE TOP SPOT · {formatMoney(claimTopBid)} <CtaArrow /></button>
       </footer>
       </div>
 

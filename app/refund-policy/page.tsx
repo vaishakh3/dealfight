@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import { CtaArrow } from '@/app/cta-arrow';
 
 export const metadata: Metadata = {
   title: 'Refund Policy',
@@ -69,7 +70,7 @@ export default function RefundPolicyPage() {
 
           <div className="legal-contact">
             <span>NEED HELP?</span>
-            <a href="mailto:vichured@gmail.com">vichured@gmail.com ↗</a>
+            <a href="mailto:vichured@gmail.com">vichured@gmail.com <CtaArrow /></a>
           </div>
         </article>
       </div>
