@@ -2,6 +2,8 @@
 
 Deal Fight is a pay-to-rank deal marketplace. Brands buy visibility with public bids, then compete for customers with exclusive discounts. A higher total bid earns a higher rank, and every paid listing remains visible.
 
+The sourced product thesis, competitive review, risk analysis, viral loops, and launch experiments are documented in [`docs/research-and-positioning.md`](docs/research-and-positioning.md).
+
 ## Local development
 
 ```bash
