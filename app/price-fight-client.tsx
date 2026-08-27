@@ -1,19 +1,11 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import {
-  bidForMode,
-  categories,
-  listings,
-  type BoardMode,
-  type Listing,
-} from '@/lib/leaderboard-data';
+import { categories, listings, type Listing } from '@/lib/leaderboard-data';
 
 type BidModalState = {
   type: 'bid';
   targetBid: number;
-  listing?: Listing;
-  initialUrl?: string;
 };
 
 type DealModalState = {
@@ -31,22 +23,31 @@ type SubmissionResult = {
   amountDueCents: number;
 };
 
-const boardLabels: Record<BoardMode, string> = {
-  all: 'All time',
-  week: 'This week',
-  today: 'Today',
-};
+const wholeDollarFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 0,
+});
+const preciseDollarFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 2,
+});
+const compactNumberFormatter = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
+const orderedListings = [...listings].sort((a, b) => b.totalBid - a.totalBid);
+const placementChoices = [
+  { label: 'Top spot', detail: 'Above the current #1', amount: orderedListings[0].totalBid + 1 },
+  { label: 'Top 3', detail: 'Above the current #3', amount: orderedListings[2].totalBid + 1 },
+  { label: 'Top 5', detail: 'Above the current #5', amount: orderedListings[4].totalBid + 1 },
+  { label: 'Join board', detail: 'Get your first listing live', amount: 5 },
+];
 
 function formatMoney(value: number) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
-  }).format(value);
+  return (value % 1 === 0 ? wholeDollarFormatter : preciseDollarFormatter).format(value);
 }
 
 function formatCompact(value: number) {
-  return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+  return compactNumberFormatter.format(value);
 }
 
 async function recordEvent(offerId: string, type: 'claim' | 'click' | 'share') {
@@ -57,7 +58,7 @@ async function recordEvent(offerId: string, type: 'claim' | 'click' | 'share') {
       body: JSON.stringify({ offerId, type }),
     });
   } catch {
-    // A visitor should never lose their action because analytics is unavailable.
+    // The visitor's action should never depend on analytics.
   }
 }
 
@@ -74,28 +75,90 @@ function DealModal({ listing, onClose }: { listing: Listing; onClose: () => void
   return (
     <div className="modal-shell" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="modal-card deal-modal" role="dialog" aria-modal="true" aria-labelledby="deal-title">
-        <button className="modal-close" type="button" onClick={onClose} aria-label="Close dialog">×</button>
-        <span className="eyebrow">EXCLUSIVE PRESEASON DEAL</span>
+        <button className="modal-close" type="button" onClick={onClose} aria-label="Close deal">×</button>
+        <div className="dialog-kicker"><span>SHOPPER OFFER</span><span>Sponsored #{listings.indexOf(listing) + 1}</span></div>
         <div className="deal-brand">
           <span className="brand-mark large" aria-hidden="true">{listing.mark}</span>
           <div><h2 id="deal-title">{listing.name}</h2><p>{listing.tagline}</p></div>
         </div>
-        <div className="deal-callout"><strong>{listing.dealLabel}</strong><p>{listing.dealDetails}</p></div>
+        <div className="deal-price-panel">
+          <span>{listing.dealLabel}</span>
+          <strong>{listing.dealPrice}</strong>
+          <p>Regularly <s>{listing.regularPrice}</s> · <b>{listing.savings}</b></p>
+        </div>
+        <p className="offer-terms">{listing.dealDetails}</p>
         <div className="coupon-box">
-          <span>Sample coupon</span>
+          <span>Your coupon code</span>
           <strong>{listing.coupon}</strong>
-          <button type="button" onClick={copyCode}>{copied ? 'COPIED ✓' : 'COPY'}</button>
+          <button type="button" onClick={copyCode}>{copied ? 'COPIED ✓' : 'COPY CODE'}</button>
         </div>
         <a className="modal-primary" href={listing.url} target="_blank" rel="noopener noreferrer sponsored" onClick={() => recordEvent(listing.id, 'click')}>
-          Visit {listing.name} <span>↗</span>
+          Go to {listing.name} <span>↗</span>
         </a>
+        <div className="sponsor-explainer">
+          <b>Why is this sponsored #{listings.indexOf(listing) + 1}?</b>
+          <p>{listing.name} has committed {formatMoney(listing.totalBid)} for this placement. That payment determines rank; the shopper offer above is separate.</p>
+        </div>
         <small>Illustrative preseason inventory. No affiliation or live discount is implied.</small>
       </section>
     </div>
   );
 }
 
-function BidModal({ targetBid, listing, initialUrl, onClose }: { targetBid: number; listing?: Listing; initialUrl?: string; onClose: () => void }) {
+function ListingPreview({
+  productName,
+  tagline,
+  category,
+  listPrice,
+  dealPrice,
+  couponCode,
+  totalBid,
+}: {
+  productName: string;
+  tagline: string;
+  category: string;
+  listPrice: number;
+  dealPrice: number;
+  couponCode: string;
+  totalBid: number;
+}) {
+  const discount = listPrice > dealPrice && dealPrice > 0 ? Math.round((1 - dealPrice / listPrice) * 100) : 0;
+  const estimatedRank = 1 + listings.filter((item) => item.totalBid >= totalBid).length;
+  const initials = productName.trim().split(/\s+/).map((word) => word[0]).join('').slice(0, 2).toUpperCase() || 'YO';
+
+  return (
+    <aside className="listing-preview" aria-label="Live shopper preview">
+      <div className="preview-heading"><span>LIVE SHOPPER PREVIEW</span><b>This is how your listing appears</b></div>
+      <article className="preview-card">
+        <div className="preview-rank"><b>#{estimatedRank}</b><span>Sponsored placement</span></div>
+        <div className="preview-product">
+          <span className="brand-mark">{initials}</span>
+          <div><small>{category}</small><h3>{productName || 'Your product'}</h3><p>{tagline || 'Your one-line product promise appears here.'}</p></div>
+        </div>
+        <div className="preview-offer">
+          <span>EXCLUSIVE SHOPPER OFFER</span>
+          <strong>{discount > 0 ? `${discount}% OFF` : 'YOUR DEAL'}</strong>
+          <p><b>{dealPrice > 0 ? formatMoney(dealPrice) : '$—'}</b> <s>{listPrice > 0 ? formatMoney(listPrice) : '$—'}</s></p>
+          <small>Code: {couponCode || 'YOURCODE'}</small>
+        </div>
+        <div className="preview-cta">GET THIS DEAL ↗</div>
+        <div className="preview-disclosure">Sponsored rank based on a {formatMoney(totalBid || 0)} visibility bid</div>
+      </article>
+      <div className="separation-note">
+        <div><span>SHOPPER GETS</span><b>{discount > 0 ? `${discount}% off` : 'Your offer'}</b></div>
+        <span className="not-equal">≠</span>
+        <div><span>YOU BID FOR VISIBILITY</span><b>{formatMoney(totalBid || 0)}</b></div>
+      </div>
+      <p className="preview-help">These are independent numbers. Changing your placement bid never changes the price customers pay.</p>
+    </aside>
+  );
+}
+
+function BidModal({ targetBid, onClose }: { targetBid: number; onClose: () => void }) {
+  const [productName, setProductName] = useState('');
+  const [tagline, setTagline] = useState('');
+  const [category, setCategory] = useState('AI');
+  const [couponCode, setCouponCode] = useState('');
   const [listPrice, setListPrice] = useState(100);
   const [dealPrice, setDealPrice] = useState(50);
   const [totalBid, setTotalBid] = useState(targetBid);
@@ -108,6 +171,7 @@ function BidModal({ targetBid, listing, initialUrl, onClose }: { targetBid: numb
     return Math.round((1 - dealPrice / listPrice) * 100);
   }, [listPrice, dealPrice]);
 
+  const estimatedRank = 1 + listings.filter((item) => item.totalBid >= totalBid).length;
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
@@ -119,19 +183,19 @@ function BidModal({ targetBid, listing, initialUrl, onClose }: { targetBid: numb
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          productName: form.get('productName'),
+          productName,
           productUrl: form.get('productUrl'),
           email: form.get('email'),
-          tagline: form.get('tagline'),
-          couponCode: form.get('couponCode'),
-          category: form.get('category'),
+          tagline,
+          couponCode,
+          category,
           listPrice,
           dealPrice,
           targetBid: totalBid,
         }),
       });
       const payload = await response.json() as SubmissionResult & { error?: string };
-      if (!response.ok) throw new Error(payload.error || 'We could not save that bid.');
+      if (!response.ok) throw new Error(payload.error || 'We could not save that listing.');
       setResult(payload);
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : 'Try that again.');
@@ -140,74 +204,121 @@ function BidModal({ targetBid, listing, initialUrl, onClose }: { targetBid: numb
     }
   };
 
+  if (result) {
+    return (
+      <div className="modal-shell" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+        <section className="modal-card success-view" role="dialog" aria-modal="true" aria-labelledby="bid-title">
+          <button className="modal-close" type="button" onClick={onClose} aria-label="Close dialog">×</button>
+          <span className="success-check">✓</span>
+          <span className="eyebrow">LISTING SAVED / PAYMENT OFF</span>
+          <h2 id="bid-title">Your visibility bid is {formatMoney(result.targetBidCents / 100)}.</h2>
+          <p>Your customer offer is <strong>{result.discountPercent}% off</strong>. It stays separate from your placement spend.</p>
+          <div className="success-summary">
+            <div><span>Total visibility bid</span><b>{formatMoney(result.targetBidCents / 100)}</b></div>
+            <div><span>Previously paid</span><b>{formatMoney(result.previousBidCents / 100)}</b></div>
+            <div><span>Would be due now</span><b>{formatMoney(result.amountDueCents / 100)}</b></div>
+          </div>
+          <div className="success-note">Stored as <b>pending payment</b>. Nothing was charged.</div>
+          <button className="modal-primary" type="button" onClick={onClose}>Back to the deals</button>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="modal-shell" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="modal-card bid-modal" role="dialog" aria-modal="true" aria-labelledby="bid-title">
-        <button className="modal-close" type="button" onClick={onClose} aria-label="Close dialog">×</button>
-        {result ? (
-          <div className="success-view">
-            <span className="success-check">✓</span>
-            <span className="eyebrow">BID SAVED / PAYMENT OFF</span>
-            <h2 id="bid-title">Your total bid is {formatMoney(result.targetBidCents / 100)}.</h2>
-            <p>
-              This URL previously had {formatMoney(result.previousBidCents / 100)} paid. Checkout will charge only the
-              <strong> {formatMoney(result.amountDueCents / 100)} difference</strong> when a payment provider is connected.
-            </p>
-            <div className="success-note">Stored as <b>pending payment</b>. Nothing was charged.</div>
-            <button className="modal-primary" type="button" onClick={onClose}>Back to the board</button>
-          </div>
-        ) : (
-          <>
-            <span className="eyebrow">{listing ? `OUTBID ${listing.name.toUpperCase()}` : 'CLAIM YOUR RANK'}</span>
-            <h2 id="bid-title">Buy the rank.<br />Bring the deal.</h2>
-            <p className="modal-intro">Your total bid decides visibility. Your exclusive discount gives visitors a reason to choose you. Start at $5; rebids pay only the difference.</p>
-            <form onSubmit={submit}>
+        <button className="modal-close" type="button" onClick={onClose} aria-label="Close listing form">×</button>
+        <div className="bid-modal-header">
+          <div><span className="eyebrow">FOR BRANDS</span><h2 id="bid-title">List a deal people want.</h2></div>
+          <p>Your offer wins the customer. Your separate visibility bid determines where the listing appears.</p>
+        </div>
+        <div className="bid-modal-layout">
+          <form onSubmit={submit}>
+            <fieldset>
+              <legend><span>1</span><div>Your product<small>What shoppers should understand at a glance</small></div></legend>
               <div className="field-pair">
-                <label>Product name<input name="productName" autoFocus defaultValue={listing?.name} required minLength={2} maxLength={60} placeholder="Acme Pro" /></label>
+                <label>Product name<input autoFocus value={productName} onChange={(event) => setProductName(event.target.value)} required minLength={2} maxLength={60} placeholder="Acme Pro" /></label>
+                <label>Category<select value={category} onChange={(event) => setCategory(event.target.value)}>{categories.filter((item) => item !== 'All').map((item) => <option key={item}>{item}</option>)}</select></label>
+              </div>
+              <label>One-line promise<input value={tagline} onChange={(event) => setTagline(event.target.value)} required minLength={8} maxLength={140} placeholder="What does your product help people achieve?" /></label>
+              <div className="field-pair">
+                <label>Product URL<input name="productUrl" required inputMode="url" placeholder="https://yourproduct.com" /></label>
                 <label>Work email<input name="email" type="email" required placeholder="you@company.com" /></label>
               </div>
-              <label>Product URL<input name="productUrl" defaultValue={initialUrl ?? (listing && !listing.url.includes('example.com') ? listing.url : '')} required inputMode="url" placeholder="https://yourproduct.com" /></label>
-              <label>One-line pitch<input name="tagline" defaultValue={listing?.tagline} required minLength={8} maxLength={140} placeholder="Say exactly what you do." /></label>
-              <div className="bid-amount-field">
-                <label htmlFor="total-bid">Your new total bid</label>
-                <div><span>$</span><input id="total-bid" name="targetBid" type="number" min="5" step="1" required value={totalBid} onChange={(event) => setTotalBid(Number(event.target.value))} /></div>
-                <small>We calculate any previous paid bid from your URL before checkout.</small>
-              </div>
+            </fieldset>
+
+            <fieldset className="offer-fieldset">
+              <legend><span>2</span><div>Your shopper offer<small>This is the price visitors receive—not your bid</small></div></legend>
               <div className="field-pair price-pair">
-                <label>Public price ($)<input name="listPrice" type="number" min="1" step="0.01" required value={listPrice} onChange={(event) => setListPrice(Number(event.target.value))} /></label>
-                <label>Your deal price ($)<input name="dealPrice" type="number" min="0.01" step="0.01" required value={dealPrice} onChange={(event) => setDealPrice(Number(event.target.value))} /></label>
-                <div className={`discount-chip ${discount >= 10 ? 'valid' : ''}`}><span>VISITOR DEAL</span><b>{discount}% OFF</b></div>
+                <label>Regular public price ($)<input type="number" min="1" step="0.01" required value={listPrice} onChange={(event) => setListPrice(Number(event.target.value))} /></label>
+                <label>Deal price for shoppers ($)<input type="number" min="0.01" step="0.01" required value={dealPrice} onChange={(event) => setDealPrice(Number(event.target.value))} /></label>
+                <div className={`discount-chip ${discount >= 10 ? 'valid' : ''}`}><span>SHOPPER SAVES</span><b>{discount}%</b></div>
               </div>
-              <div className="field-pair">
-                <label>Coupon code<input name="couponCode" required minLength={3} maxLength={32} placeholder="DEAL50" /></label>
-                <label>Category<select name="category" defaultValue={listing?.category ?? 'AI'}>{categories.filter((item) => item !== 'All').map((item) => <option key={item}>{item}</option>)}</select></label>
+              <label>Coupon code<input value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} required minLength={3} maxLength={32} placeholder="DEAL50" /></label>
+            </fieldset>
+
+            <fieldset className="placement-fieldset">
+              <legend><span>3</span><div>Your visibility bid<small>This only controls sponsored placement</small></div></legend>
+              <div className="placement-choices">
+                {placementChoices.map((choice) => (
+                  <button className={totalBid === choice.amount ? 'active' : ''} type="button" key={choice.label} onClick={() => setTotalBid(choice.amount)}>
+                    <span>{choice.label}</span><b>{formatMoney(choice.amount)}</b><small>{choice.detail}</small>
+                  </button>
+                ))}
               </div>
-              {error && <p className="form-error" role="alert">{error}</p>}
-              <button className="modal-primary" type="submit" disabled={status === 'submitting' || discount < 10 || totalBid < 5}>
-                {status === 'submitting' ? 'SAVING…' : `CONTINUE WITH ${formatMoney(totalBid)} TOTAL`} <span>↗</span>
-              </button>
-              <small>No charge is made in this build. Deals must be real, public, and at least 10% off.</small>
-            </form>
-          </>
-        )}
+              <label className="custom-bid">Or set your own total visibility bid
+                <span><b>$</b><input type="number" min="5" step="1" required value={totalBid} onChange={(event) => setTotalBid(Number(event.target.value))} /></span>
+              </label>
+              <div className="rank-estimate"><span>Estimated sponsored placement</span><b>#{estimatedRank}</b><small>Based on the current sample leaderboard. Rank can change when brands bid.</small></div>
+            </fieldset>
+
+            <div className="checkout-clarity">
+              <div><span>SHOPPERS SEE</span><b>{discount}% off</b></div>
+              <div><span>YOUR SPONSORED RANK</span><b>About #{estimatedRank}</b></div>
+              <div><span>YOUR VISIBILITY BID</span><b>{formatMoney(totalBid)}</b></div>
+            </div>
+            {error && <p className="form-error" role="alert">{error}</p>}
+            <button className="modal-primary" type="submit" disabled={status === 'submitting' || discount < 10 || totalBid < 5}>
+              {status === 'submitting' ? 'SAVING…' : 'SAVE LISTING — NO CHARGE'} <span>↗</span>
+            </button>
+            <small>No charge is made in this preseason build. Existing advertisers pay only the difference when increasing a bid.</small>
+          </form>
+
+          <ListingPreview productName={productName} tagline={tagline} category={category} listPrice={listPrice} dealPrice={dealPrice} couponCode={couponCode} totalBid={totalBid} />
+        </div>
       </section>
     </div>
   );
 }
 
+function DealRow({ listing, rank, onOpen }: { listing: Listing; rank: number; onOpen: () => void }) {
+  return (
+    <article className={`deal-row ${rank <= 3 ? `top-${rank}` : ''}`}>
+      <div className="rank-cell"><b>#{rank}</b><span>SPONSORED</span></div>
+      <div className="product-cell">
+        <span className="brand-mark" aria-hidden="true">{listing.mark}</span>
+        <div><span className="category-label">{listing.category}</span><h3>{listing.name}</h3><p>{listing.tagline}</p></div>
+      </div>
+      <div className="consumer-offer">
+        <span className="deal-pill">{listing.dealLabel}</span>
+        <div><strong>{listing.dealPrice}</strong><small>Regularly <s>{listing.regularPrice}</s></small></div>
+        <b>{listing.savings}</b>
+      </div>
+      <div className="social-proof"><b>{formatCompact(listing.claims)}</b><span>deal claims</span></div>
+      <button className="get-deal-button" type="button" onClick={onOpen}>VIEW DEAL <span>↗</span></button>
+      <div className="placement-disclosure">Rank #{rank} because {listing.name}&apos;s visibility bid is {formatMoney(listing.totalBid)} · updated {listing.age}</div>
+    </article>
+  );
+}
+
 export default function PriceFightClient() {
-  const [mode, setMode] = useState<BoardMode>('all');
   const [category, setCategory] = useState<(typeof categories)[number]>('All');
   const [modal, setModal] = useState<ModalState>(null);
-  const [quickUrl, setQuickUrl] = useState('');
 
-  const ranked = useMemo(() => listings
-    .filter((listing) => category === 'All' || listing.category === category)
-    .sort((a, b) => bidForMode(b, mode) - bidForMode(a, mode)), [category, mode]);
-
-  const currentLeader = [...listings].sort((a, b) => bidForMode(b, mode) - bidForMode(a, mode))[0];
-  const claimTopBid = bidForMode(currentLeader, mode) + 5;
-  const totalBoardValue = listings.reduce((sum, listing) => sum + listing.totalBid, 0);
+  const ranked = useMemo(() => orderedListings.filter((listing) => category === 'All' || listing.category === category), [category]);
+  const currentLeader = orderedListings[0];
+  const claimTopBid = currentLeader.totalBid + 1;
 
   useEffect(() => {
     if (!modal) return;
@@ -220,110 +331,109 @@ export default function PriceFightClient() {
     };
   }, [modal]);
 
-  const openQuickBid = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setModal({ type: 'bid', targetBid: claimTopBid, initialUrl: quickUrl });
-  };
+  const scrollToDeals = () => document.getElementById('deals')?.scrollIntoView({ behavior: 'smooth' });
 
   return (
     <main id="top">
       <header className="site-header">
         <a className="wordmark" href="#top" aria-label="Deal Fight home">DEAL<span>FIGHT</span><sup>.LOL</sup></a>
-        <nav aria-label="Main navigation"><a href="#leaderboard">Deal board</a><a href="#how">How it works</a></nav>
-        <button className="header-cta" type="button" onClick={() => setModal({ type: 'bid', targetBid: claimTopBid })}>LIST A DEAL <span>↗</span></button>
+        <nav aria-label="Main navigation"><a href="#deals">Browse deals</a><a href="#how-ranking-works">How ranking works</a><a href="#for-brands">For brands</a></nav>
+        <button className="header-cta" type="button" onClick={() => setModal({ type: 'bid', targetBid: 5 })}>FOR BRANDS: GET LISTED <span>↗</span></button>
       </header>
 
-      <div className="preview-banner"><b>PRESEASON</b><span>Sample deals · database-ready · payments off</span></div>
+      <div className="preview-banner"><b>PRESEASON DEMO</b><span>Sample offers only · no live payments</span></div>
 
-      <section className="hero-simple">
+      <section className="consumer-hero">
         <div className="hero-copy">
-          <span className="eyebrow">THE PAY-TO-RANK DEAL MARKETPLACE</span>
-          <h1>BID FOR RANK.<br /><em>WIN WITH DEALS.</em></h1>
-          <p>Brands pay to climb the board, then compete for customers with exclusive discounts. Every paid listing stays visible. Every visitor gets something useful.</p>
-          <div className="usp-grid" aria-label="How Deal Fight works">
-            <div><span>$</span><p><strong>MONEY BUYS THE RANK</strong>Higher lifetime bid means higher placement.</p></div>
-            <div><span>%</span><p><strong>THE DEAL WINS THE CLICK</strong>Better offers turn that visibility into customers.</p></div>
-          </div>
+          <span className="eyebrow">EXCLUSIVE SOFTWARE DEALS</span>
+          <h1>Brands fight.<br /><em>You save.</em></h1>
+          <p>Discover useful products with discounts you won&apos;t find on their public pricing pages.</p>
           <div className="hero-actions">
-            <button className="primary-cta" type="button" onClick={() => setModal({ type: 'bid', targetBid: claimTopBid })}>LIST YOUR DEAL <span>↗</span></button>
-            <a href="#leaderboard">BROWSE THE DEALS <span>↓</span></a>
+            <button className="primary-cta" type="button" onClick={scrollToDeals}>BROWSE TODAY&apos;S DEALS <span>↓</span></button>
+            <a href="#how-ranking-works">Why are deals ranked? <span>→</span></a>
           </div>
+          <div className="hero-trust"><span>✓ Every offer is at least 10% off</span><span>✓ Paid placements are clearly labeled</span></div>
         </div>
-        <form className="top-rank-card" onSubmit={openQuickBid}>
-          <div className="top-card-head"><span>TOP PAID RANK</span><span>Live target</span></div>
-          <div className="leader-mini"><span className="rank-crown">♛</span><div><small>Currently</small><strong>{currentLeader.name}</strong></div><b>{formatMoney(bidForMode(currentLeader, mode))}</b></div>
-          <label htmlFor="quick-url">Your product URL</label>
-          <input id="quick-url" value={quickUrl} onChange={(event) => setQuickUrl(event.target.value)} required inputMode="url" placeholder="yourproduct.com" />
-          <button type="submit">BID {formatMoney(claimTopBid)} TO TAKE #1 <span>↗</span></button>
-          <small>Already listed? Same URL, pay only the difference.</small>
-        </form>
+
+        <article className="featured-deal">
+          <div className="featured-topline"><span>FEATURED DEAL</span><span>SPONSORED #1</span></div>
+          <div className="featured-brand"><span className="brand-mark large">{currentLeader.mark}</span><div><small>{currentLeader.category}</small><h2>{currentLeader.name}</h2><p>{currentLeader.tagline}</p></div></div>
+          <div className="featured-offer"><span>{currentLeader.dealLabel}</span><strong>{currentLeader.dealPrice}</strong><p>Regularly <s>{currentLeader.regularPrice}</s> · <b>{currentLeader.savings}</b></p></div>
+          <button type="button" onClick={() => setModal({ type: 'deal', listing: currentLeader })}>UNLOCK THIS DEAL <span>↗</span></button>
+          <p className="featured-disclosure"><b>Why #1?</b> {currentLeader.name} has the highest visibility bid. That decides placement—not the discount.</p>
+        </article>
       </section>
 
-      <section className="proof-strip" aria-label="Sample marketplace statistics">
-        <div><strong>{listings.length}</strong><span>exclusive deals</span></div>
-        <div><strong>{formatMoney(totalBoardValue)}</strong><span>board value</span></div>
-        <div><strong>{formatCompact(listings.reduce((sum, item) => sum + item.clicks, 0))}</strong><span>sample clicks</span></div>
-        <div><strong>$5</strong><span>minimum bid</span></div>
+      <section className="consumer-proof" aria-label="Marketplace promises">
+        <div><strong>70%</strong><span>biggest sample saving</span></div>
+        <div><strong>{listings.length}</strong><span>exclusive offers</span></div>
+        <div><strong>10%+</strong><span>minimum shopper discount</span></div>
+        <div><strong>100%</strong><span>sponsored ranks disclosed</span></div>
       </section>
 
-      <section className="leaderboard-section" id="leaderboard">
+      <section className="ranking-explainer" id="how-ranking-works">
+        <div><span className="eyebrow">ONE IMPORTANT THING</span><h2>The rank is paid.<br />The saving is yours.</h2></div>
+        <div className="ranking-equation">
+          <article><span>FOR BRANDS</span><b>$</b><h3>Visibility bid</h3><p>Brands choose how much to commit for placement. Highest total gets #1.</p></article>
+          <span className="equation-plus">+</span>
+          <article><span>FOR SHOPPERS</span><b>%</b><h3>Exclusive offer</h3><p>A separate discount of at least 10% gives you a reason to click.</p></article>
+          <span className="equation-equals">=</span>
+          <article className="equation-result"><span>THE RESULT</span><b>↗</b><h3>Useful sponsored deals</h3><p>Clear paid rankings without pretending the highest bidder has the best discount.</p></article>
+        </div>
+      </section>
+
+      <section className="deals-section" id="deals">
         <div className="section-heading">
-          <div><span className="eyebrow">PAID RANKS. REAL DEALS.</span><h2>Bid gets the rank.<br />Deal gets the click.</h2></div>
-          <p>A transparent ad auction that is useful to browse. Brands buy visibility, then fight for customers with better discounts.</p>
+          <div><span className="eyebrow">THE SPONSORED DEAL BOARD</span><h2>Pick the offer<br />that works for you.</h2></div>
+          <p>Rank shows what a brand paid for visibility. The large green offer shows exactly what you receive.</p>
         </div>
-
-        <div className="board-controls">
-          <div className="tab-group" aria-label="Leaderboard period">{(Object.keys(boardLabels) as BoardMode[]).map((item) => <button type="button" key={item} className={mode === item ? 'active' : ''} onClick={() => setMode(item)}>{boardLabels[item]}</button>)}</div>
-          <div className="category-group" aria-label="Category filter">{categories.map((item) => <button type="button" key={item} className={category === item ? 'active' : ''} onClick={() => setCategory(item)}>{item}</button>)}</div>
+        <div className="board-key" aria-label="How to read the deal board">
+          <span><b>SPONSORED #</b> Paid placement</span><span><b>GREEN OFFER</b> Your price and saving</span><span><b>VIEW DEAL</b> Full terms and coupon</span>
         </div>
-
-        <div className="board-wrap">
-          <div className="board-header"><span>Paid rank / product</span><span>Exclusive deal</span><span>Clicks</span><span>Total bid</span><span /></div>
-          {ranked.map((listing, index) => {
-            const bid = bidForMode(listing, mode);
-            const nextBid = bid + (index === 0 ? 5 : 1);
-            return (
-              <article className={`board-row ${index < 3 ? `podium podium-${index + 1}` : ''}`} key={listing.id}>
-                <div className="product-cell">
-                  <span className="rank-number">{String(index + 1).padStart(2, '0')}</span>
-                  <span className="brand-mark" aria-hidden="true">{listing.mark}</span>
-                  <div><h3>{listing.name} <span>{listing.category}</span></h3><p>{listing.tagline}</p></div>
-                </div>
-                <button className="deal-button" type="button" onClick={() => setModal({ type: 'deal', listing })}><strong>{listing.dealLabel}</strong><span>GET DEAL ↗</span></button>
-                <div className="traffic-cell"><strong>{formatCompact(listing.clicks)}</strong><span>{listing.claims} claims</span></div>
-                <div className="bid-cell"><strong>{formatMoney(bid)}</strong><span>{listing.age}</span></div>
-                <button className="outbid-button" type="button" onClick={() => setModal({ type: 'bid', listing, targetBid: nextBid })}>OUTBID<br /><b>{formatMoney(nextBid)}</b></button>
-              </article>
-            );
-          })}
-          {!ranked.length && <div className="empty-board">No bidders in this category yet. The first slot starts at $5.</div>}
+        <div className="category-group" aria-label="Filter deals by category">
+          {categories.map((item) => <button type="button" key={item} className={category === item ? 'active' : ''} onClick={() => setCategory(item)}>{item}</button>)}
         </div>
-        <div className="board-foot"><span>All amounts are sample data during preseason.</span><button type="button" onClick={() => setModal({ type: 'bid', targetBid: 5 })}>JOIN FROM $5 ↗</button></div>
+        <div className="deal-board">
+          {ranked.map((listing) => <DealRow key={listing.id} listing={listing} rank={orderedListings.indexOf(listing) + 1} onOpen={() => setModal({ type: 'deal', listing })} />)}
+          {!ranked.length && <div className="empty-board">No sponsored deals in this category yet.</div>}
+        </div>
+        <p className="sample-note">Preseason sample data. Offers and activity shown here are illustrative.</p>
       </section>
 
-      <section className="how-section" id="how">
-        <div className="section-heading light"><div><span className="eyebrow">THE WHOLE RULEBOOK</span><h2>Three steps.<br />That&apos;s it.</h2></div><p>No opaque ad manager. A public bid buys attention; an exclusive offer turns it into demand.</p></div>
-        <div className="steps-grid">
-          <article><span>01</span><h3>Bring a real deal</h3><p>Every listing needs an exclusive visitor offer of at least 10% off.</p></article>
-          <article><span>02</span><h3>Bid for visibility</h3><p>Start at $5. Higher total bid means higher rank, and every bidder stays visible.</p></article>
-          <article><span>03</span><h3>Win clicks. Move up.</h3><p>Your deal competes for customers. If you rebid, use the same URL and pay only the difference.</p></article>
+      <section className="brand-section" id="for-brands">
+        <div className="brand-copy">
+          <span className="eyebrow">FOR FOUNDERS &amp; BRANDS</span>
+          <h2>Buy attention.<br />Earn the click.</h2>
+          <p>Your listing contains two separate levers. Make shoppers a compelling offer, then choose how visible you want it to be.</p>
+          <ol>
+            <li><span>1</span><div><b>Create a shopper offer</b><p>Set your public price, exclusive deal price, and coupon.</p></div></li>
+            <li><span>2</span><div><b>Choose a visibility bid</b><p>$5 gets listed. Higher lifetime totals move your sponsored rank up.</p></div></li>
+            <li><span>3</span><div><b>Preview before you continue</b><p>See exactly what customers will see—before any payment.</p></div></li>
+          </ol>
+          <button className="brand-cta" type="button" onClick={() => setModal({ type: 'bid', targetBid: 5 })}>PREVIEW MY LISTING <span>↗</span></button>
         </div>
-        <button className="wide-cta" type="button" onClick={() => setModal({ type: 'bid', targetBid: claimTopBid })}>GET ON THE BOARD <span>START AT $5 ↗</span></button>
+        <div className="brand-math">
+          <span>THE TWO NUMBERS NEVER MIX</span>
+          <div className="math-card offer-math"><small>WHAT SHOPPERS GET</small><b>50% OFF</b><p>$50 instead of $100</p></div>
+          <div className="math-divider">NOT THE SAME AS</div>
+          <div className="math-card bid-math"><small>WHAT YOU PAY FOR PLACEMENT</small><b>$381 BID</b><p>Estimated sponsored rank #5</p></div>
+          <p>Already listed? Increase your total and pay only the difference.</p>
+        </div>
       </section>
 
       <section className="faq-section">
-        <div><span className="eyebrow">WHY IT WORKS</span><h2>Paid visibility.<br />Useful advertising.</h2></div>
+        <div><span className="eyebrow">NO FINE-PRINT CONFUSION</span><h2>Simple rules.<br />Clear incentives.</h2></div>
         <div className="faq-list">
-          <details open><summary>Why would visitors come here?<span>+</span></summary><p>Every row contains an exclusive discount. It is a browsable deal destination, not a wall of links asking for attention.</p></details>
-          <details><summary>Does a bigger discount improve rank?<span>+</span></summary><p>No. Total dollars paid determine rank, so the rule stays transparent. The deal determines whether visitors click, claim, and become customers.</p></details>
-          <details><summary>Why would a brand rebid?<span>+</span></summary><p>Higher rank earns more visibility and public status. Brands can move up at any time by paying only the difference from their existing paid total.</p></details>
+          <details open><summary>Does the biggest discount rank first?<span>+</span></summary><p>No. The sponsored rank is determined only by the brand&apos;s total visibility bid. The discount is shown separately so shoppers can judge the offer for themselves.</p></details>
+          <details><summary>What exactly does a shopper pay?<span>+</span></summary><p>The green offer shows the deal price, regular price, saving, and terms. The brand&apos;s visibility bid is never added to the shopper&apos;s price.</p></details>
+          <details><summary>What exactly does a brand pay?<span>+</span></summary><p>A brand chooses a total visibility bid. New listings start at $5. When moving up later, the existing paid total is credited and only the difference is due.</p></details>
         </div>
       </section>
 
-      <footer><a className="wordmark inverted" href="#top">DEAL<span>FIGHT</span><sup>.LOL</sup></a><p>Brands bid for rank. Better deals win the customer.</p><button type="button" onClick={() => setModal({ type: 'bid', targetBid: 5 })}>LIST FROM $5 ↗</button></footer>
+      <footer><a className="wordmark inverted" href="#top">DEAL<span>FIGHT</span><sup>.LOL</sup></a><p>Brands compete for attention. Shoppers get the deal.</p><button type="button" onClick={() => setModal({ type: 'bid', targetBid: claimTopBid })}>TAKE THE TOP SPOT · {formatMoney(claimTopBid)} ↗</button></footer>
 
       {modal?.type === 'deal' && <DealModal listing={modal.listing} onClose={() => setModal(null)} />}
-      {modal?.type === 'bid' && <BidModal listing={modal.listing} initialUrl={modal.initialUrl} targetBid={modal.targetBid} onClose={() => setModal(null)} />}
+      {modal?.type === 'bid' && <BidModal targetBid={modal.targetBid} onClose={() => setModal(null)} />}
     </main>
   );
 }
