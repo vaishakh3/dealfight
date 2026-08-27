@@ -1,20 +1,3 @@
-create table dealfight_private.request_rate_limits (
-  bucket text not null
-    constraint request_rate_limits_bucket_length check (char_length(bucket) between 2 and 40),
-  fingerprint text not null
-    constraint request_rate_limits_fingerprint_sha256 check (fingerprint ~ '^[a-f0-9]{64}$'),
-  window_started_at timestamptz not null,
-  request_count integer not null
-    constraint request_rate_limits_count_positive check (request_count > 0),
-  updated_at timestamptz not null default now(),
-  primary key (bucket, fingerprint, window_started_at)
-);
-
-alter table dealfight_private.request_rate_limits enable row level security;
-
-revoke all on table dealfight_private.request_rate_limits
-  from public, anon, authenticated, service_role;
-
 grant select, insert, update, delete on table dealfight_private.request_rate_limits
   to anon;
 
@@ -39,10 +22,7 @@ on dealfight_private.request_rate_limits for delete
 to anon
 using ((select dealfight_private.request_is_authorized()));
 
-create index request_rate_limits_cleanup_idx
-  on dealfight_private.request_rate_limits (window_started_at);
-
-create function public.consume_dealfight_rate_limit(
+create or replace function public.consume_dealfight_rate_limit(
   p_bucket text,
   p_fingerprint text,
   p_max_requests integer,
@@ -97,6 +77,3 @@ revoke execute on function public.consume_dealfight_rate_limit(text, text, integ
 
 grant execute on function public.consume_dealfight_rate_limit(text, text, integer, integer)
   to anon;
-
-comment on table dealfight_private.request_rate_limits is
-  'Fixed-window request counters keyed by a server-generated HMAC; raw client IPs are never stored.';
