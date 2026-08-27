@@ -313,6 +313,31 @@ footer button { background: var(--ink); border: 0; color: white; cursor: pointer
 .success-summary span { color: var(--muted); font-size: 7px; }
 .success-summary b { font-family: var(--font-geist-mono); font-size: 14px; margin-top: 5px; }
 .success-note { background: #e9e5d8; font-size: 10px; margin: 0 0 18px; padding: 12px; }
+.payment-policy-note { color: var(--muted); font-size: 9px !important; line-height: 1.5 !important; margin: 12px 0 0 !important; }
+.payment-policy-note a, .faq-list a { font-weight: 850; text-decoration: underline; text-underline-offset: 3px; }
+
+.legal-page { min-height: 100vh; }
+.legal-header { align-items: center; background: rgba(246, 243, 233, .96); border-bottom: 1px solid var(--ink); display: flex; justify-content: space-between; min-height: 76px; padding: 0 4vw; position: sticky; top: 0; z-index: 10; }
+.legal-back { background: var(--ink); color: white; font-family: var(--font-geist-mono); font-size: 9px; font-weight: 900; letter-spacing: .04em; padding: 14px 16px; }
+.legal-shell { display: grid; grid-template-columns: minmax(280px, .65fr) minmax(0, 1.35fr); margin: 0 auto; max-width: 1320px; padding: 70px 4vw 110px; }
+.legal-summary { align-self: start; background: var(--lime); border: 1px solid var(--ink); box-shadow: 10px 10px 0 var(--ink); display: block; margin: 20px 7vw 0 0; padding: 28px; position: sticky; top: 115px; transform: rotate(-.7deg); }
+.legal-summary > span { display: block; font-family: var(--font-geist-mono); font-size: 8px; font-weight: 900; letter-spacing: .1em; }
+.legal-summary > strong { display: block; font-size: 20px; letter-spacing: -.035em; margin-top: 34px; }
+.legal-summary > b { display: block; font-size: clamp(40px, 4.4vw, 68px); letter-spacing: -.075em; line-height: .82; margin-top: 8px; }
+.legal-summary > p { border-top: 1px solid var(--ink); font-size: 11px; line-height: 1.55; margin: 28px 0 0; padding-top: 18px; }
+.legal-content { max-width: 760px; }
+.legal-content > .eyebrow { color: var(--orange); }
+.legal-content > h1 { font-size: clamp(64px, 8vw, 118px); letter-spacing: -.09em; line-height: .78; margin: 0 0 35px; }
+.legal-intro { font-size: 19px !important; letter-spacing: -.025em; line-height: 1.5 !important; }
+.legal-content section { border-top: 1px solid var(--ink); padding: 30px 0; }
+.legal-content section h2 { font-size: 23px; letter-spacing: -.04em; margin: 0 0 12px; }
+.legal-content section p { color: var(--muted); font-size: 13px; line-height: 1.68; margin: 0; }
+.legal-content section a { font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+.legal-content .legal-highlight { background: var(--lime-soft); border: 1px solid var(--ink); margin: 5px -22px 30px; padding: 25px 22px; }
+.legal-content .legal-highlight + section { border-top: 0; }
+.legal-contact { align-items: center; background: var(--orange); border: 1px solid var(--ink); color: white; display: flex; justify-content: space-between; margin-top: 35px; padding: 24px; }
+.legal-contact span { font-family: var(--font-geist-mono); font-size: 9px; font-weight: 900; }
+.legal-contact a { font-size: 15px; font-weight: 900; }
 
 @media (max-width: 1120px) {
   .consumer-hero { grid-template-columns: 1fr; }
@@ -481,4 +506,21 @@ footer button { background: var(--ink); border: 0; color: white; cursor: pointer
   .success-summary { grid-template-columns: 1fr; }
   .success-summary div { border-bottom: 1px solid var(--ink); border-right: 0; }
   .success-summary div:last-child { border-bottom: 0; }
+  .payment-policy-note { font-size: 10px !important; }
+  .legal-header { min-height: 64px; padding: 0 18px; }
+  .legal-header .wordmark { font-size: 19px; }
+  .legal-header .site-logo-mark { height: 34px; width: 34px; }
+  .legal-back { align-items: center; display: flex; min-height: 44px; padding: 10px 12px; }
+  .legal-shell { display: flex; flex-direction: column; padding: 42px 20px 75px; }
+  .legal-summary { margin: 0 7px 58px 0; order: 0; padding: 23px; position: static; }
+  .legal-summary > strong { font-size: 18px; margin-top: 27px; }
+  .legal-summary > b { font-size: 52px; }
+  .legal-summary > p { font-size: 12px; }
+  .legal-content > h1 { font-size: clamp(63px, 21vw, 88px); margin-bottom: 28px; }
+  .legal-intro { font-size: 17px !important; }
+  .legal-content section { padding: 25px 0; }
+  .legal-content section h2 { font-size: 21px; }
+  .legal-content section p { font-size: 14px; }
+  .legal-content .legal-highlight { margin-left: -10px; margin-right: -10px; padding: 22px 10px; }
+  .legal-contact { align-items: flex-start; flex-direction: column; gap: 13px; }
 }

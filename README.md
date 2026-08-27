@@ -85,7 +85,17 @@ set review_status = 'approved'
 where id = '<verified-submission-uuid>' and status = 'paid';
 ```
 
-Use `review_status = 'rejected'` for QA, impersonation, broken offers, or non-compliant listings. Retain the paid row for the payment audit trail.
+Use `review_status = 'rejected'` for QA, impersonation, broken offers, or non-compliant listings. Under the published refund policy, a genuine paid listing rejected before first publication receives a full refund. Initiate the refund from the Dodo payment detail within 30 days and retain the submission row for the audit trail. Test/QA payments may be rejected without a refund when no real funds were collected.
+
+The webhook must subscribe to `payment.succeeded`, `refund.succeeded`, and `refund.failed`. A signed full `refund.succeeded` event changes the submission to `status = 'refunded'`, forces `review_status = 'rejected'`, and stores the provider outcome in `payment_refunds`. Partial refunds are audited but do not automatically unpublish a listing.
+
+Refund policy operations:
+
+1. Confirm that the request matches the payer email and Dodo payment.
+2. For a pre-publication rejection, initiate a full Dodo refund and record a concise reason.
+3. For an already-published listing, approve only duplicate/incorrect charges, non-delivery, confirmed fraud, legal requirements, or another published exception.
+4. Verify the signed refund webhook, `payment_refunds` row, submission status, and removal from the public board.
+5. Never mark a payment refunded manually before Dodo confirms `refund.succeeded`.
 
 ### Test Mode to Live Mode
 

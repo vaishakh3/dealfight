@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { categories, listings as launchListings, type Listing } from '@/lib/leaderboard-data';
 
@@ -270,11 +271,15 @@ function BidModal({ targetBid, boardListings, placementChoices, onClose }: { tar
             <div><span>Previously paid</span><b>{formatMoney(result.previousBidCents / 100)}</b></div>
             <div><span>Balance at checkout</span><b>{formatMoney(result.amountDueCents / 100)}</b></div>
           </div>
-          <div className="success-note">Dodo&apos;s secure checkout collects the balance below. Taxes, if required, are shown separately before payment. Your deal is reviewed before it appears on the board.</div>
+          <div className="success-note">
+            Dodo&apos;s secure checkout collects the balance below. Taxes, if required, are shown separately before payment. Your deal is reviewed before it appears on the board.
+            <b> Rejected before publication? We refund the visibility payment in full.</b>
+          </div>
           {error && <p className="form-error" role="alert">{error}</p>}
           <button className="modal-primary" type="button" onClick={continueToCheckout} disabled={status === 'checkout'}>
             {status === 'checkout' ? 'OPENING SECURE CHECKOUT…' : `CONTINUE · ${formatMoney(result.amountDueCents / 100)} BALANCE`} <span>↗</span>
           </button>
+          <p className="payment-policy-note">By continuing, you confirm the offer is accurate and agree to our <Link href="/refund-policy" target="_blank">refund policy</Link>. Once a listing is published, visibility payments are non-refundable except for duplicate or incorrect charges, non-delivery, fraud, legal requirements, or another exception stated in that policy.</p>
           <button className="success-secondary" type="button" onClick={onClose}>Not now — back to the deals</button>
         </section>
       </div>
@@ -539,6 +544,7 @@ export default function PriceFightClient({ initialListings = launchListings }: {
           <details open><summary>Does the biggest discount rank first?<span>+</span></summary><p>No. The sponsored rank is determined only by the brand&apos;s total visibility bid. The discount is shown separately so shoppers can judge the offer for themselves.</p></details>
           <details><summary>What exactly does a shopper pay?<span>+</span></summary><p>The green offer shows the deal price, regular price, saving, and terms. The brand&apos;s visibility bid is never added to the shopper&apos;s price.</p></details>
           <details><summary>What exactly does a brand pay?<span>+</span></summary><p>A brand chooses a total visibility bid. New listings start at $5. When moving up later, the existing paid total is credited and only the difference is due.</p></details>
+          <details><summary>What if a paid listing is rejected?<span>+</span></summary><p>If we reject it before it is first published, we refund the visibility payment in full to the original payment method. Once published, visibility payments are generally non-refundable. <Link href="/refund-policy">Read the refund policy.</Link></p></details>
         </div>
       </section>
 
@@ -551,6 +557,8 @@ export default function PriceFightClient({ initialListings = launchListings }: {
             <a href="https://dodopayments.com/buyer-terms" target="_blank" rel="noopener noreferrer">Buyer terms</a>
             {' · '}
             <a href="https://dodopayments.com/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy</a>
+            {' · '}
+            <Link href="/refund-policy">Refund policy</Link>
           </small>
         </div>
         <button type="button" onClick={() => openModal({ type: 'bid', targetBid: claimTopBid })}>TAKE THE TOP SPOT · {formatMoney(claimTopBid)} ↗</button>

@@ -22,6 +22,62 @@ export type Database = {
         };
         Relationships: [];
       };
+      payment_refunds: {
+        Row: {
+          amount_minor: number | null;
+          created_at: string;
+          currency: string | null;
+          is_partial: boolean;
+          last_event_at: string;
+          last_event_id: string;
+          payment_id: string;
+          provider_created_at: string;
+          reason: string | null;
+          refund_id: string;
+          status: string;
+          submission_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          amount_minor?: number | null;
+          created_at?: string;
+          currency?: string | null;
+          is_partial: boolean;
+          last_event_at: string;
+          last_event_id: string;
+          payment_id: string;
+          provider_created_at: string;
+          reason?: string | null;
+          refund_id: string;
+          status: string;
+          submission_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          amount_minor?: number | null;
+          created_at?: string;
+          currency?: string | null;
+          is_partial?: boolean;
+          last_event_at?: string;
+          last_event_id?: string;
+          payment_id?: string;
+          provider_created_at?: string;
+          reason?: string | null;
+          refund_id?: string;
+          status?: string;
+          submission_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'payment_refunds_submission_id_fkey';
+            columns: ['submission_id'];
+            isOneToOne: false;
+            referencedRelation: 'submissions';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       submissions: {
         Row: {
           amount_due_cents: number;

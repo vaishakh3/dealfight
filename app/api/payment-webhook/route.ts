@@ -36,8 +36,86 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid webhook signature.' }, { status: 401 });
     }
 
-    if (event.type !== 'payment.succeeded') {
+    if (event.type !== 'payment.succeeded' && event.type !== 'refund.succeeded' && event.type !== 'refund.failed') {
       return NextResponse.json({ received: true, handled: false });
+    }
+
+    const database = await getDatabase();
+
+    if (event.type === 'refund.succeeded' || event.type === 'refund.failed') {
+      const refund = event.data;
+      const refundStatus = event.type === 'refund.succeeded' ? 'succeeded' : 'failed';
+      const { data: submission, error: submissionError } = await database
+        .from('submissions')
+        .select('id, status, review_status, email, dodo_payment_id, payment_received_minor, payment_currency')
+        .eq('dodo_payment_id', refund.payment_id)
+        .maybeSingle();
+
+      if (submissionError) throw submissionError;
+      if (!submission) {
+        return NextResponse.json({ error: 'Refund payment is not linked to a Deal Fight submission.' }, { status: 404 });
+      }
+      if (!refund.refund_id || refund.customer.email.toLowerCase() !== submission.email.toLowerCase()) {
+        return NextResponse.json({ error: 'Refund does not match the linked submission.' }, { status: 409 });
+      }
+      if (refund.amount != null && submission.payment_received_minor != null) {
+        if (refund.amount > submission.payment_received_minor || refund.currency !== submission.payment_currency) {
+          return NextResponse.json({ error: 'Refund amount or currency does not match the linked payment.' }, { status: 409 });
+        }
+      }
+
+      const { data: existingRefund, error: existingRefundError } = await database
+        .from('payment_refunds')
+        .select('status, last_event_id')
+        .eq('refund_id', refund.refund_id)
+        .maybeSingle();
+
+      if (existingRefundError) throw existingRefundError;
+      if (existingRefund?.status === 'succeeded' && refundStatus === 'failed') {
+        return NextResponse.json({ received: true, handled: true, outOfOrder: true });
+      }
+
+      if (refundStatus === 'succeeded' && !refund.is_partial && submission.status !== 'refunded') {
+        if (submission.status !== 'paid') {
+          return NextResponse.json({ error: 'The linked submission cannot accept this refund state.' }, { status: 409 });
+        }
+
+        const { data: refundedSubmission, error: refundUpdateError } = await database
+          .from('submissions')
+          .update({ status: 'refunded', review_status: 'rejected' })
+          .eq('id', submission.id)
+          .eq('status', 'paid')
+          .select('id')
+          .maybeSingle();
+
+        if (refundUpdateError) throw refundUpdateError;
+        if (!refundedSubmission) {
+          return NextResponse.json({ error: 'Submission state changed before the refund could be recorded.' }, { status: 409 });
+        }
+      }
+
+      const { error: refundAuditError } = await database
+        .from('payment_refunds')
+        .upsert({
+          refund_id: refund.refund_id,
+          submission_id: submission.id,
+          payment_id: refund.payment_id,
+          amount_minor: refund.amount ?? null,
+          currency: refund.currency ?? null,
+          is_partial: refund.is_partial,
+          status: refundStatus,
+          reason: refund.reason ?? null,
+          provider_created_at: refund.created_at,
+          last_event_id: webhookId,
+          last_event_at: event.timestamp,
+        }, { onConflict: 'refund_id' });
+
+      if (refundAuditError) throw refundAuditError;
+      return NextResponse.json({
+        received: true,
+        handled: true,
+        duplicate: existingRefund?.last_event_id === webhookId,
+      });
     }
 
     const payment = event.data;
@@ -54,7 +132,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Visibility bids cannot be paid with a checkout discount.' }, { status: 422 });
     }
 
-    const database = await getDatabase();
     const { data: submission, error: submissionError } = await database
       .from('submissions')
       .select('id, status, email, target_bid_cents, amount_due_cents, dodo_checkout_session_id, dodo_payment_id')
@@ -111,7 +188,7 @@ export async function POST(request: Request) {
     if (isPaymentProviderUnavailable(error)) {
       return NextResponse.json({ error: 'Payment verification is not configured.' }, { status: 503 });
     }
-    console.error('Failed to process Dodo payment webhook', error);
+    console.error('Failed to process Dodo payment or refund webhook', error);
     return NextResponse.json({ error: 'Webhook processing failed.' }, { status: 500 });
   }
 }
