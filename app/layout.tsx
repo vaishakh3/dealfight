@@ -13,17 +13,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Price Fight — Brands fight. You win.',
-  description: 'The anti-ad leaderboard where brands rank by the deal they give customers. No paid boosts. The best verified offer wins.',
+  title: 'Price Fight — Pay more. Rank higher.',
+  description: 'The public deal leaderboard where your bid decides your rank and every listing gives visitors something back.',
   openGraph: {
-    title: 'Price Fight — Brands fight. You win.',
-    description: 'The anti-ad leaderboard where brands compete by giving customers the best verified deal.',
+    title: 'Price Fight — Pay more. Rank higher.',
+    description: 'Bid for a public rank, stay visible on the full board, and give visitors an exclusive deal.',
     type: 'website',
   },
   twitter: {
     card: 'summary',
-    title: 'Price Fight — Brands fight. You win.',
-    description: 'Paying us cannot move a brand up. Only a better deal can.',
+    title: 'Price Fight — Pay more. Rank higher.',
+    description: 'Every bidder stays visible. Every visitor gets a deal.',
   },
 };
 

@@ -1,16 +1,40 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { categories, fights, type Fight, type Offer } from '@/lib/fight-data';
+import {
+  bidForMode,
+  categories,
+  listings,
+  type BoardMode,
+  type Listing,
+} from '@/lib/leaderboard-data';
 
-type ModalState =
-  | { type: 'claim'; offer: Offer }
-  | { type: 'enter'; fight: Fight }
-  | null;
+type BidModalState = {
+  type: 'bid';
+  targetBid: number;
+  listing?: Listing;
+  initialUrl?: string;
+};
+
+type DealModalState = {
+  type: 'deal';
+  listing: Listing;
+};
+
+type ModalState = BidModalState | DealModalState | null;
 
 type SubmissionResult = {
   submissionId: string;
   discountPercent: number;
+  targetBidCents: number;
+  previousBidCents: number;
+  amountDueCents: number;
+};
+
+const boardLabels: Record<BoardMode, string> = {
+  all: 'All time',
+  week: 'This week',
+  today: 'Today',
 };
 
 function formatMoney(value: number) {
@@ -21,23 +45,8 @@ function formatMoney(value: number) {
   }).format(value);
 }
 
-function useCountdown(closesAt: string) {
-  const [remaining, setRemaining] = useState(0);
-
-  useEffect(() => {
-    const update = () => setRemaining(Math.max(0, new Date(closesAt).getTime() - Date.now()));
-    update();
-    const timer = window.setInterval(update, 1000);
-    return () => window.clearInterval(timer);
-  }, [closesAt]);
-
-  const totalSeconds = Math.floor(remaining / 1000);
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  return `${days ? `${days}D ` : ''}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+function formatCompact(value: number) {
+  return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
 }
 
 async function recordEvent(offerId: string, type: 'claim' | 'click' | 'share') {
@@ -48,86 +57,56 @@ async function recordEvent(offerId: string, type: 'claim' | 'click' | 'share') {
       body: JSON.stringify({ offerId, type }),
     });
   } catch {
-    // The user action should still work when analytics is unavailable.
+    // A visitor should never lose their action because analytics is unavailable.
   }
 }
 
-function OfferCard({ offer, rank, onClaim }: { offer: Offer; rank: number; onClaim: () => void }) {
-  return (
-    <article className={`fighter-card fighter-${offer.accent}`}>
-      <div className="fighter-topline">
-        <span className="fighter-rank">0{rank}</span>
-        <span className="fighter-badge">{offer.discount}% OFF</span>
-      </div>
-      <div className="fighter-identity">
-        <span className="product-mark" aria-hidden="true">{offer.mark}</span>
-        <div>
-          <h3>{offer.name}</h3>
-          <p>{offer.tagline}</p>
-        </div>
-      </div>
-      <div className="price-lockup">
-        <strong>{formatMoney(offer.dealPrice)}</strong>
-        <div><s>{formatMoney(offer.originalPrice)}</s><span>/ {offer.term}</span></div>
-      </div>
-      <div className="proof-line"><span>✓ VERIFIED</span>{offer.proof}</div>
-      <div className="fighter-actions">
-        <span>{offer.claims.toLocaleString()} sample claims</span>
-        <button type="button" onClick={onClaim}>GET THE CODE <b>↗</b></button>
-      </div>
-    </article>
-  );
-}
-
-function ClaimModal({ offer, onClose }: { offer: Offer; onClose: () => void }) {
+function DealModal({ listing, onClose }: { listing: Listing; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
 
   const copyCode = async () => {
-    await navigator.clipboard?.writeText(offer.coupon);
+    await navigator.clipboard?.writeText(listing.coupon);
     setCopied(true);
-    recordEvent(offer.id, 'claim');
+    recordEvent(listing.id, 'claim');
     window.setTimeout(() => setCopied(false), 1600);
   };
 
   return (
     <div className="modal-shell" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section className="deal-modal" role="dialog" aria-modal="true" aria-labelledby="deal-title">
+      <section className="modal-card deal-modal" role="dialog" aria-modal="true" aria-labelledby="deal-title">
         <button className="modal-close" type="button" onClick={onClose} aria-label="Close dialog">×</button>
-        <p className="modal-kicker">PRESEASON SAMPLE DEAL / {offer.discount}% OFF</p>
-        <div className="modal-mark" aria-hidden="true">{offer.mark}</div>
-        <h2 id="deal-title">{offer.name} brought the sharpest price.</h2>
-        <p>{offer.finePrint}</p>
-        <div className="coupon-box">
-          <span>YOUR SAMPLE CODE</span>
-          <strong>{offer.coupon}</strong>
-          <button type="button" onClick={copyCode}>{copied ? 'COPIED ✓' : 'COPY CODE'}</button>
+        <span className="eyebrow">PRESEASON SAMPLE DEAL</span>
+        <div className="deal-brand">
+          <span className="brand-mark large" aria-hidden="true">{listing.mark}</span>
+          <div><h2 id="deal-title">{listing.name}</h2><p>{listing.tagline}</p></div>
         </div>
-        <a
-          className="deal-outbound"
-          href={offer.url}
-          target="_blank"
-          rel="noopener noreferrer sponsored"
-          onClick={() => recordEvent(offer.id, 'click')}
-        >
-          OPEN SAMPLE DESTINATION <span>↗</span>
+        <div className="deal-callout"><strong>{listing.dealLabel}</strong><p>{listing.dealDetails}</p></div>
+        <div className="coupon-box">
+          <span>Sample coupon</span>
+          <strong>{listing.coupon}</strong>
+          <button type="button" onClick={copyCode}>{copied ? 'COPIED ✓' : 'COPY'}</button>
+        </div>
+        <a className="modal-primary" href={listing.url} target="_blank" rel="noopener noreferrer sponsored" onClick={() => recordEvent(listing.id, 'click')}>
+          Visit {listing.name} <span>↗</span>
         </a>
-        <small>This is illustrative preseason inventory. No affiliation or live discount is implied.</small>
+        <small>Illustrative preseason inventory. No affiliation or live discount is implied.</small>
       </section>
     </div>
   );
 }
 
-function EntryModal({ fight, onClose }: { fight: Fight; onClose: () => void }) {
-  const [listPrice, setListPrice] = useState(120);
-  const [fightPrice, setFightPrice] = useState(36);
+function BidModal({ targetBid, listing, initialUrl, onClose }: { targetBid: number; listing?: Listing; initialUrl?: string; onClose: () => void }) {
+  const [listPrice, setListPrice] = useState(100);
+  const [dealPrice, setDealPrice] = useState(50);
+  const [totalBid, setTotalBid] = useState(targetBid);
   const [status, setStatus] = useState<'idle' | 'submitting'>('idle');
   const [error, setError] = useState('');
   const [result, setResult] = useState<SubmissionResult | null>(null);
 
   const discount = useMemo(() => {
-    if (!listPrice || !fightPrice || fightPrice >= listPrice) return 0;
-    return Math.round((1 - fightPrice / listPrice) * 100);
-  }, [listPrice, fightPrice]);
+    if (!listPrice || !dealPrice || dealPrice >= listPrice) return 0;
+    return Math.round((1 - dealPrice / listPrice) * 100);
+  }, [listPrice, dealPrice]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -147,11 +126,12 @@ function EntryModal({ fight, onClose }: { fight: Fight; onClose: () => void }) {
           couponCode: form.get('couponCode'),
           category: form.get('category'),
           listPrice,
-          fightPrice,
+          fightPrice: dealPrice,
+          targetBid: totalBid,
         }),
       });
       const payload = await response.json() as SubmissionResult & { error?: string };
-      if (!response.ok) throw new Error(payload.error || 'The arena could not save that entry.');
+      if (!response.ok) throw new Error(payload.error || 'We could not save that bid.');
       setResult(payload);
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : 'Try that again.');
@@ -162,42 +142,51 @@ function EntryModal({ fight, onClose }: { fight: Fight; onClose: () => void }) {
 
   return (
     <div className="modal-shell" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section className="entry-modal" role="dialog" aria-modal="true" aria-labelledby="entry-title">
+      <section className="modal-card bid-modal" role="dialog" aria-modal="true" aria-labelledby="bid-title">
         <button className="modal-close" type="button" onClick={onClose} aria-label="Close dialog">×</button>
         {result ? (
-          <div className="entry-success">
-            <span className="success-stamp">SAVED</span>
-            <p className="modal-kicker">ENTRY {result.submissionId.slice(0, 8).toUpperCase()}</p>
-            <h2 id="entry-title">Your {result.discountPercent}% deal is in the locker room.</h2>
-            <p>No charge was made. The application is stored as <strong>pending payment</strong>; connect a provider to the prepared checkout endpoint and the $49 verification step is ready to activate.</p>
-            <button type="button" className="primary-dark" onClick={onClose}>BACK TO THE FIGHT</button>
+          <div className="success-view">
+            <span className="success-check">✓</span>
+            <span className="eyebrow">BID SAVED / PAYMENT OFF</span>
+            <h2 id="bid-title">Your total bid is {formatMoney(result.targetBidCents / 100)}.</h2>
+            <p>
+              This URL previously had {formatMoney(result.previousBidCents / 100)} paid. Checkout will charge only the
+              <strong> {formatMoney(result.amountDueCents / 100)} difference</strong> when a payment provider is connected.
+            </p>
+            <div className="success-note">Stored as <b>pending payment</b>. Nothing was charged.</div>
+            <button className="modal-primary" type="button" onClick={onClose}>Back to the board</button>
           </div>
         ) : (
           <>
-            <p className="modal-kicker">CHALLENGE ROUND {fight.round}</p>
-            <h2 id="entry-title">Bring a better deal.<br />Take the homepage.</h2>
-            <p className="entry-intro">$49 verifies the offer and enters it. It never buys position.</p>
+            <span className="eyebrow">{listing ? `OUTBID ${listing.name.toUpperCase()}` : 'CLAIM YOUR RANK'}</span>
+            <h2 id="bid-title">Your bid is your rank.</h2>
+            <p className="modal-intro">Start at $5. Already listed? Use the same URL and pay only the difference.</p>
             <form onSubmit={submit}>
-              <div className="field-grid">
-                <label>Product name<input name="productName" required minLength={2} maxLength={60} placeholder="Acme Pro" /></label>
+              <div className="field-pair">
+                <label>Product name<input name="productName" defaultValue={listing?.name} required minLength={2} maxLength={60} placeholder="Acme Pro" /></label>
                 <label>Work email<input name="email" type="email" required placeholder="you@company.com" /></label>
               </div>
-              <label>Public product URL<input name="productUrl" required inputMode="url" placeholder="https://yourproduct.com" /></label>
-              <label>One-line pitch<input name="tagline" required minLength={8} maxLength={140} placeholder="What customers get, without the fluff." /></label>
-              <div className="field-grid price-fields">
-                <label>Public list price ($)<input name="listPrice" type="number" min="1" step="0.01" required value={listPrice} onChange={(event) => setListPrice(Number(event.target.value))} /></label>
-                <label>Your fight price ($)<input name="fightPrice" type="number" min="1" step="0.01" required value={fightPrice} onChange={(event) => setFightPrice(Number(event.target.value))} /></label>
-                <div className={`deal-meter ${discount >= 15 ? 'valid' : ''}`}><span>YOUR HIT</span><strong>{discount}% OFF</strong></div>
+              <label>Product URL<input name="productUrl" defaultValue={initialUrl ?? (listing && !listing.url.includes('example.com') ? listing.url : '')} required inputMode="url" placeholder="https://yourproduct.com" /></label>
+              <label>One-line pitch<input name="tagline" defaultValue={listing?.tagline} required minLength={8} maxLength={140} placeholder="Say exactly what you do." /></label>
+              <div className="bid-amount-field">
+                <label htmlFor="total-bid">Your new total bid</label>
+                <div><span>$</span><input id="total-bid" name="targetBid" type="number" min="5" step="1" required value={totalBid} onChange={(event) => setTotalBid(Number(event.target.value))} /></div>
+                <small>We calculate any previous paid bid from your URL before checkout.</small>
               </div>
-              <div className="field-grid">
+              <div className="field-pair price-pair">
+                <label>Public price ($)<input name="listPrice" type="number" min="1" step="0.01" required value={listPrice} onChange={(event) => setListPrice(Number(event.target.value))} /></label>
+                <label>Your deal price ($)<input name="fightPrice" type="number" min="0.01" step="0.01" required value={dealPrice} onChange={(event) => setDealPrice(Number(event.target.value))} /></label>
+                <div className={`discount-chip ${discount >= 10 ? 'valid' : ''}`}><span>VISITOR DEAL</span><b>{discount}% OFF</b></div>
+              </div>
+              <div className="field-pair">
                 <label>Coupon code<input name="couponCode" required minLength={3} maxLength={32} placeholder="FIGHT50" /></label>
-                <label>Category<select name="category" defaultValue={fight.category}>{categories.map((category) => <option key={category}>{category}</option>)}</select></label>
+                <label>Category<select name="category" defaultValue={listing?.category ?? 'AI'}>{categories.filter((item) => item !== 'All').map((item) => <option key={item}>{item}</option>)}</select></label>
               </div>
               {error && <p className="form-error" role="alert">{error}</p>}
-              <button className="submit-entry" type="submit" disabled={status === 'submitting' || discount < 15}>
-                {status === 'submitting' ? 'SAVING ENTRY…' : 'SAVE ENTRY — PAYMENT LATER'} <span>↗</span>
+              <button className="modal-primary" type="submit" disabled={status === 'submitting' || discount < 10 || totalBid < 5}>
+                {status === 'submitting' ? 'SAVING…' : `CONTINUE WITH ${formatMoney(totalBid)} TOTAL`} <span>↗</span>
               </button>
-              <small>By entering, you confirm the public price is real and the code works for the stated audience. All entries are reviewed.</small>
+              <small>No charge is made in this build. Deals must be real, public, and at least 10% off.</small>
             </form>
           </>
         )}
@@ -207,11 +196,18 @@ function EntryModal({ fight, onClose }: { fight: Fight; onClose: () => void }) {
 }
 
 export default function PriceFightClient() {
-  const [activeSlug, setActiveSlug] = useState(fights[0].slug);
+  const [mode, setMode] = useState<BoardMode>('all');
+  const [category, setCategory] = useState<(typeof categories)[number]>('All');
   const [modal, setModal] = useState<ModalState>(null);
-  const [shared, setShared] = useState(false);
-  const activeFight = fights.find((fight) => fight.slug === activeSlug) ?? fights[0];
-  const countdown = useCountdown(activeFight.closesAt);
+  const [quickUrl, setQuickUrl] = useState('');
+
+  const ranked = useMemo(() => listings
+    .filter((listing) => category === 'All' || listing.category === category)
+    .sort((a, b) => bidForMode(b, mode) - bidForMode(a, mode)), [category, mode]);
+
+  const currentLeader = [...listings].sort((a, b) => bidForMode(b, mode) - bidForMode(a, mode))[0];
+  const claimTopBid = bidForMode(currentLeader, mode) + 5;
+  const totalBoardValue = listings.reduce((sum, listing) => sum + listing.totalBid, 0);
 
   useEffect(() => {
     if (!modal) return;
@@ -224,116 +220,106 @@ export default function PriceFightClient() {
     };
   }, [modal]);
 
-  const shareFight = async () => {
-    const shareData = {
-      title: `Price Fight: ${activeFight.title}`,
-      text: `${activeFight.offers[0].name} is winning with ${activeFight.offers[0].discount}% off. Can anyone beat it?`,
-      url: `${window.location.origin}/#fight`,
-    };
-    try {
-      if (navigator.share) await navigator.share(shareData);
-      else await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
-      setShared(true);
-      recordEvent(activeFight.offers[0].id, 'share');
-      window.setTimeout(() => setShared(false), 1800);
-    } catch {
-      // Dismissing a native share sheet is not an error.
-    }
+  const openQuickBid = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setModal({ type: 'bid', targetBid: claimTopBid, initialUrl: quickUrl });
   };
 
   return (
-    <main>
+    <main id="top">
       <header className="site-header">
-        <a className="wordmark" href="#top" aria-label="Price Fight home">PRICE<span>FIGHT</span></a>
-        <nav aria-label="Main navigation">
-          <a href="#fight">Live fight</a><a href="#arenas">Arenas</a><a href="#rules">Rules</a>
-        </nav>
-        <button className="header-action" type="button" onClick={() => setModal({ type: 'enter', fight: activeFight })}>ENTER A DEAL ↗</button>
+        <a className="wordmark" href="#top" aria-label="Price Fight home">PRICE<span>FIGHT</span><sup>.LOL</sup></a>
+        <nav aria-label="Main navigation"><a href="#leaderboard">Leaderboard</a><a href="#how">How it works</a></nav>
+        <button className="header-cta" type="button" onClick={() => setModal({ type: 'bid', targetBid: claimTopBid })}>LIST YOUR SITE <span>↗</span></button>
       </header>
 
-      <div className="preview-banner"><span>PRESEASON BUILD</span> Offers and activity shown below are clearly marked sample data. Submission storage is live; payments are off.</div>
+      <div className="preview-banner"><b>PRESEASON</b><span>Sample listings · submissions live · payments off</span></div>
 
-      <section className="hero" id="top">
-        <div className="hero-kicker"><span>THE ANTI-AD LEADERBOARD</span><span>ROUND {activeFight.round}</span></div>
-        <h1>BRANDS FIGHT.<br /><em>YOU WIN.</em></h1>
-        <div className="hero-bottom">
-          <p>Brands cannot buy their way up. They climb by giving you a better, verified deal.</p>
-          <a href="#fight">WATCH THE FIGHT <span>↓</span></a>
+      <section className="hero-simple">
+        <div className="hero-copy">
+          <span className="eyebrow">THE INTERNET&apos;S PUBLIC AD AUCTION</span>
+          <h1>PAY MORE.<br /><em>RANK HIGHER.</em></h1>
+          <p>Your bid decides your position. Every listing stays visible. Every product gives visitors an exclusive deal.</p>
+          <div className="hero-actions">
+            <button className="primary-cta" type="button" onClick={() => setModal({ type: 'bid', targetBid: claimTopBid })}>CLAIM A RANK <span>↗</span></button>
+            <a href="#leaderboard">SEE EVERY BID <span>↓</span></a>
+          </div>
         </div>
-        <div className="hero-stats" aria-label="Preseason product facts">
-          <div><strong>{fights.length}</strong><span>sample arenas</span></div>
-          <div><strong>{Math.max(...fights.flatMap((fight) => fight.offers.map((offer) => offer.discount)))}%</strong><span>sharpest sample deal</span></div>
-          <div><strong>$49</strong><span>verified entry</span></div>
-          <div><strong>$0</strong><span>paid boosts, ever</span></div>
+        <form className="top-rank-card" onSubmit={openQuickBid}>
+          <div className="top-card-head"><span>CLAIM #1</span><span>Live target</span></div>
+          <div className="leader-mini"><span className="rank-crown">♛</span><div><small>Currently</small><strong>{currentLeader.name}</strong></div><b>{formatMoney(bidForMode(currentLeader, mode))}</b></div>
+          <label htmlFor="quick-url">Your product URL</label>
+          <input id="quick-url" value={quickUrl} onChange={(event) => setQuickUrl(event.target.value)} required inputMode="url" placeholder="yourproduct.com" />
+          <button type="submit">BID {formatMoney(claimTopBid)} TO TAKE #1 <span>↗</span></button>
+          <small>Already listed? Same URL, pay only the difference.</small>
+        </form>
+      </section>
+
+      <section className="proof-strip" aria-label="Sample marketplace statistics">
+        <div><strong>{listings.length}</strong><span>sample listings</span></div>
+        <div><strong>{formatMoney(totalBoardValue)}</strong><span>board value</span></div>
+        <div><strong>{formatCompact(listings.reduce((sum, item) => sum + item.clicks, 0))}</strong><span>sample clicks</span></div>
+        <div><strong>$5</strong><span>minimum bid</span></div>
+      </section>
+
+      <section className="leaderboard-section" id="leaderboard">
+        <div className="section-heading">
+          <div><span className="eyebrow">NO HIDDEN INVENTORY</span><h2>Every bidder.<br />One leaderboard.</h2></div>
+          <p>Top spots get the spotlight. Everyone keeps a clickable row. Bid again at any time to move up.</p>
+        </div>
+
+        <div className="board-controls">
+          <div className="tab-group" aria-label="Leaderboard period">{(Object.keys(boardLabels) as BoardMode[]).map((item) => <button type="button" key={item} className={mode === item ? 'active' : ''} onClick={() => setMode(item)}>{boardLabels[item]}</button>)}</div>
+          <div className="category-group" aria-label="Category filter">{categories.map((item) => <button type="button" key={item} className={category === item ? 'active' : ''} onClick={() => setCategory(item)}>{item}</button>)}</div>
+        </div>
+
+        <div className="board-wrap">
+          <div className="board-header"><span>Rank / product</span><span>Exclusive deal</span><span>Traffic</span><span>Paid</span><span /></div>
+          {ranked.map((listing, index) => {
+            const bid = bidForMode(listing, mode);
+            const nextBid = bid + (index === 0 ? 5 : 1);
+            return (
+              <article className={`board-row ${index < 3 ? `podium podium-${index + 1}` : ''}`} key={listing.id}>
+                <div className="product-cell">
+                  <span className="rank-number">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="brand-mark" aria-hidden="true">{listing.mark}</span>
+                  <div><h3>{listing.name} <span>{listing.category}</span></h3><p>{listing.tagline}</p></div>
+                </div>
+                <button className="deal-button" type="button" onClick={() => setModal({ type: 'deal', listing })}><strong>{listing.dealLabel}</strong><span>GET DEAL ↗</span></button>
+                <div className="traffic-cell"><strong>{formatCompact(listing.clicks)}</strong><span>{listing.claims} claims</span></div>
+                <div className="bid-cell"><strong>{formatMoney(bid)}</strong><span>{listing.age}</span></div>
+                <button className="outbid-button" type="button" onClick={() => setModal({ type: 'bid', listing, targetBid: nextBid })}>OUTBID<br /><b>{formatMoney(nextBid)}</b></button>
+              </article>
+            );
+          })}
+          {!ranked.length && <div className="empty-board">No bidders in this category yet. The first slot starts at $5.</div>}
+        </div>
+        <div className="board-foot"><span>All amounts are sample data during preseason.</span><button type="button" onClick={() => setModal({ type: 'bid', targetBid: 5 })}>JOIN FROM $5 ↗</button></div>
+      </section>
+
+      <section className="how-section" id="how">
+        <div className="section-heading light"><div><span className="eyebrow">THE WHOLE RULEBOOK</span><h2>Three steps.<br />That&apos;s it.</h2></div><p>No opaque ad manager. No daily budget. No expiry. A public bid, a public rank, and a real deal.</p></div>
+        <div className="steps-grid">
+          <article><span>01</span><h3>List from $5</h3><p>Add your URL, one-line pitch, and an exclusive visitor deal.</p></article>
+          <article><span>02</span><h3>Your bid = your rank</h3><p>Pay more than the listing above you. Every bidder remains on the board.</p></article>
+          <article><span>03</span><h3>Rebid the difference</h3><p>Use the same URL later. If $40 is already paid and you bid $55, checkout charges $15.</p></article>
+        </div>
+        <button className="wide-cta" type="button" onClick={() => setModal({ type: 'bid', targetBid: claimTopBid })}>GET ON THE BOARD <span>START AT $5 ↗</span></button>
+      </section>
+
+      <section className="faq-section">
+        <div><span className="eyebrow">THE BUSINESS MODEL</span><h2>Simple for buyers.<br />Compulsive for bidders.</h2></div>
+        <div className="faq-list">
+          <details open><summary>How does Price Fight make money?<span>+</span></summary><p>Every new listing and every upward move creates a payment. A full leaderboard means inventory is not capped at two brands.</p></details>
+          <details><summary>Can someone pay once and stay forever?<span>+</span></summary><p>Yes, but rank is never guaranteed. New bids push older listings down, creating a clear reason to return and rebid.</p></details>
+          <details><summary>Why require a visitor deal?<span>+</span></summary><p>It gives people a reason to browse and share the board instead of treating it like a wall of ads.</p></details>
         </div>
       </section>
 
-      <div className="tape" aria-hidden="true"><div>NO PAID BOOSTS ✦ LOWEST REAL PRICE WINS ✦ VERIFIED SAVINGS ✦ NO FAKE URGENCY ✦&nbsp;</div><div>NO PAID BOOSTS ✦ LOWEST REAL PRICE WINS ✦ VERIFIED SAVINGS ✦ NO FAKE URGENCY ✦&nbsp;</div></div>
+      <footer><a className="wordmark inverted" href="#top">PRICE<span>FIGHT</span><sup>.LOL</sup></a><p>The public leaderboard where money talks—and visitors get a deal.</p><button type="button" onClick={() => setModal({ type: 'bid', targetBid: 5 })}>LIST FROM $5 ↗</button></footer>
 
-      <section className="arena" id="fight">
-        <div className="arena-head">
-          <div><p className="eyebrow">SAMPLE FIGHT / {activeFight.category.toUpperCase()}</p><h2>THE PRICE WAR<br />IS ON.</h2></div>
-          <div className="round-panel"><span>ROUND CLOSES IN</span><strong>{countdown}</strong><small>{activeFight.entrants} SAMPLE ENTRANTS · BEST VERIFIED OFFER WINS</small></div>
-        </div>
-
-        <div className="fight-grid">
-          {activeFight.offers.slice(0, 2).map((offer, index) => <OfferCard key={offer.id} offer={offer} rank={index + 1} onClaim={() => setModal({ type: 'claim', offer })} />)}
-          <div className="versus" aria-hidden="true">VS</div>
-        </div>
-
-        <div className="arena-toolbar">
-          <div><span>CAN YOUR PRODUCT BEAT {activeFight.offers[0].discount}%?</span><strong>UNDERCUT THE CHAMPION.</strong></div>
-          <button type="button" className="share-button" onClick={shareFight}>{shared ? 'LINK COPIED ✓' : 'SHARE THIS FIGHT'}</button>
-          <button type="button" className="enter-button" onClick={() => setModal({ type: 'enter', fight: activeFight })}>ENTER — $49* <span>↗</span></button>
-        </div>
-        <p className="fineprint">*The fee pays for human price verification and anti-abuse review. It never affects rank. Payments are disabled in this preseason build.</p>
-      </section>
-
-      <section className="arenas-section" id="arenas">
-        <div className="section-heading"><div><p className="section-kicker">PICK YOUR RING</p><h2>MORE FIGHTS.<br />MORE SAVINGS.</h2></div><p>Each category has one rule: the strongest customer value sits at the top. Tap an arena to bring it into the ring.</p></div>
-        <div className="arena-list">
-          {fights.map((fight) => (
-            <button key={fight.slug} type="button" className={fight.slug === activeSlug ? 'active' : ''} onClick={() => { setActiveSlug(fight.slug); document.querySelector('#fight')?.scrollIntoView({ behavior: 'smooth' }); }}>
-              <span className="arena-number">{fight.round}</span>
-              <span className="arena-copy"><small>{fight.status === 'live' ? '● SAMPLE LIVE' : 'UP NEXT'}</small><strong>{fight.category}</strong><em>{fight.title}</em></span>
-              <span className="arena-leader"><small>LEADER</small><strong>{fight.offers[0].discount}% OFF</strong><em>{fight.offers[0].name}</em></span>
-              <span className="arena-arrow">↗</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="manifesto">
-        <p>THE FLIP</p>
-        <h2>OTHER AD BOARDS ASK<br />“WHO PAYS <i>US</i> MOST?”</h2>
-        <h2 className="manifesto-answer">WE ASK “WHO GIVES<br /><i>YOU</i> THE MOST?”</h2>
-      </section>
-
-      <section className="rules-section" id="rules">
-        <div className="rules-intro"><p className="section-kicker">HOW THE BELL RINGS</p><h2>THREE ROUNDS.<br />ZERO TRICKS.</h2><button type="button" onClick={() => setModal({ type: 'enter', fight: activeFight })}>BRING YOUR DEAL ↗</button></div>
-        <div className="rule-steps">
-          <article><span>01</span><h3>Enter a real offer.</h3><p>Submit the public list price, fight price, coupon and exact eligibility. A $49 fee covers verification after payments are connected.</p></article>
-          <article><span>02</span><h3>We test the punch.</h3><p>A human checks the list price, checkout code, renewal terms and restrictions. Inflated anchors and fake countdowns are rejected.</p></article>
-          <article><span>03</span><h3>Customers decide the value.</h3><p>Verified offers rank by real percentage saved, with total dollars saved breaking ties. Claims and outbound clicks stay public.</p></article>
-        </div>
-      </section>
-
-      <section className="trust-section">
-        <div><p className="section-kicker">THE REFEREE’S DESK</p><h2>NO SMALL PRINT<br />IN THE SHADOWS.</h2></div>
-        <div className="trust-list">
-          <details open><summary>Can brands pay to move up?<span>+</span></summary><p>No. Entry fees are flat. Placement is calculated only from the verified offer. There are no sponsored overrides.</p></details>
-          <details><summary>How do you stop fake discounts?<span>+</span></summary><p>We compare the submitted list price with a public pricing page or recent sale history, test the coupon and publish renewal terms beside the offer.</p></details>
-          <details><summary>How does Price Fight make money?<span>+</span></summary><p>Flat verification fees first. Later, disclosed affiliate commissions can add revenue, but never change placement.</p></details>
-          <details><summary>What happens when a deal expires?<span>+</span></summary><p>It leaves the active arena and remains in a public archive with its claims, clicks and final position.</p></details>
-        </div>
-      </section>
-
-      <section className="closing-cta"><span>GOT MARGIN?</span><h2>PUT YOUR PRICE<br />WHERE YOUR<br />MOUTH IS.</h2><button type="button" onClick={() => setModal({ type: 'enter', fight: activeFight })}>ENTER THE ARENA <b>↗</b></button></section>
-
-      <footer><a className="wordmark" href="#top">PRICE<span>FIGHT</span></a><p>Brands fight. Customers win. That is the whole business.</p><div><a href="#rules">Rules</a><a href="mailto:hello@pricefight.example">Contact</a><span>© 2026</span></div></footer>
-
-      {modal?.type === 'claim' && <ClaimModal offer={modal.offer} onClose={() => setModal(null)} />}
-      {modal?.type === 'enter' && <EntryModal fight={modal.fight} onClose={() => setModal(null)} />}
+      {modal?.type === 'deal' && <DealModal listing={modal.listing} onClose={() => setModal(null)} />}
+      {modal?.type === 'bid' && <BidModal listing={modal.listing} initialUrl={modal.initialUrl} targetBid={modal.targetBid} onClose={() => setModal(null)} />}
     </main>
   );
 }

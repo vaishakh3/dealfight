@@ -17,17 +17,46 @@ export async function POST(request: Request) {
 
   const database = await getDatabase();
   const submission = await database.prepare(`
-    SELECT id, status FROM submissions WHERE id = ?
-  `).bind(submissionId).first<{ id: string; status: string }>();
+    SELECT id, status, normalized_url, amount_due_cents, target_bid_cents FROM submissions WHERE id = ?
+  `).bind(submissionId).first<{
+    id: string;
+    status: string;
+    normalized_url: string;
+    amount_due_cents: number;
+    target_bid_cents: number;
+  }>();
 
   if (!submission) {
     return NextResponse.json({ error: 'Submission not found.' }, { status: 404 });
   }
+  if (submission.status !== 'pending_payment') {
+    return NextResponse.json({ error: 'This bid is no longer awaiting payment.' }, { status: 409 });
+  }
+
+  const latestPaid = await database.prepare(`
+    SELECT COALESCE(MAX(target_bid_cents), 0) AS total
+    FROM submissions
+    WHERE normalized_url = ? AND status = 'paid'
+  `).bind(submission.normalized_url).first<{ total: number }>();
+  const previousBidCents = Number(latestPaid?.total ?? 0);
+  const amountDueCents = submission.target_bid_cents - previousBidCents;
+
+  if (amountDueCents <= 0) {
+    return NextResponse.json({ error: 'A newer paid bid already meets or exceeds this target. Create a higher bid.' }, { status: 409 });
+  }
+
+  if (amountDueCents !== submission.amount_due_cents) {
+    await database.prepare('UPDATE submissions SET amount_due_cents = ? WHERE id = ?')
+      .bind(amountDueCents, submission.id)
+      .run();
+  }
 
   return NextResponse.json({
     code: 'PAYMENT_PROVIDER_NOT_CONNECTED',
-    message: 'The entry is safely queued. Connect a payment provider in this endpoint to create the $49 checkout session.',
-    amountCents: 4900,
+    message: 'The bid is safely queued. Connect a payment provider here and create checkout from the server-owned amount.',
+    amountCents: amountDueCents,
+    targetBidCents: submission.target_bid_cents,
+    previousBidCents,
     currency: 'USD',
   }, { status: 503 });
 }

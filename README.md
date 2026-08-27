@@ -1,6 +1,6 @@
 # Price Fight
 
-Price Fight is an anti-ad leaderboard: brands rank by the verified value of the deal they give customers, never by how much they pay the platform.
+Price Fight is a public, pay-to-rank product leaderboard. A higher total bid earns a higher rank, every paid listing remains visible, and every product supplies an exclusive visitor deal.
 
 ## Local development
 
@@ -9,22 +9,23 @@ npm install
 npm run dev
 ```
 
-The local Sites runtime provides the D1 binding declared in `.openai/hosting.json`. Tables are created idempotently on first API use; the generated migration is also committed under `drizzle/` for deployment inspection.
+The local Sites runtime provides the D1 binding declared in `.openai/hosting.json`. Tables and additive columns are created idempotently on first API use; generated migrations are also committed under `drizzle/` for deployment inspection.
 
 ## Product data
 
-The visible preseason fights in `lib/fight-data.ts` are fictional sample inventory and are labelled as such in the interface. Real submissions are saved to D1 with `pending_payment` status.
+The visible preseason listings in `lib/leaderboard-data.ts` are fictional sample inventory and are labelled as such throughout the interface. Real bid intents are stored in D1 with `pending_payment` status.
 
-## Payment handoff
+## Bid and payment handoff
 
-The product is intentionally provider-neutral until payment credentials are chosen:
+The product is provider-neutral until payment credentials are chosen:
 
-- `POST /api/submissions` validates and stores a proposed deal.
-- `POST /api/checkout` verifies that the submission exists and is the prepared integration point for a $49 USD checkout session.
-- `POST /api/payment-webhook` is the prepared webhook endpoint. Verify the provider signature, then update the matching submission from `pending_payment` to `paid`.
+- `POST /api/submissions` validates the listing, deal, and desired total bid. It normalizes the URL, finds the URL's highest paid bid, and stores only the server-calculated difference as the amount due.
+- `POST /api/checkout` rechecks the URL's latest paid total and refreshes the server-owned amount due. It is the prepared point for creating a provider checkout session.
+- `POST /api/payment-webhook` is the prepared webhook endpoint. Verify the provider signature before changing a bid from `pending_payment` to `paid`.
+- Paid bid totals should be the only canonical source for production leaderboard ranks.
 - `.env.example` lists the expected secret names.
 
-Never trust an amount from the browser. The checkout endpoint owns the fixed fee and the webhook must be the only path that marks an entry paid.
+Never trust a payment amount sent by the browser. The submission endpoint calculates the difference, checkout reads it from D1, and only a verified webhook may mark it paid.
 
 ## Verification
 
