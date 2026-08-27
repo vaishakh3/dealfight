@@ -233,7 +233,7 @@ export default function PriceFightClient() {
         <button className="header-cta" type="button" onClick={() => setModal({ type: 'bid', targetBid: claimTopBid })}>LIST A DEAL <span>↗</span></button>
       </header>
 
-      <div className="preview-banner"><b>PRESEASON</b><span>Sample deals · submissions live · payments off</span></div>
+      <div className="preview-banner"><b>PRESEASON</b><span>Sample deals · database-ready · payments off</span></div>
 
       <section className="hero-simple">
         <div className="hero-copy">

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getDatabase } from '@/lib/database';
+import { getDatabase, isDatabaseUnavailable } from '@/lib/database';
+
+export const runtime = 'nodejs';
 
 const allowedTypes = new Set(['claim', 'click', 'share']);
 
@@ -21,20 +23,21 @@ export async function POST(request: Request) {
 
   try {
     const database = await getDatabase();
-    await database.prepare(`
+    const id = crypto.randomUUID();
+    await database`
       INSERT INTO engagement_events (id, offer_id, event_type)
-      VALUES (?, ?, ?)
-    `).bind(crypto.randomUUID(), offerId, type).run();
+      VALUES (${id}, ${offerId}, ${type})
+    `;
 
-    const result = await database.prepare(`
-      SELECT COUNT(*) AS count
+    const result = await database`
+      SELECT COUNT(*)::int AS count
       FROM engagement_events
-      WHERE offer_id = ? AND event_type = ?
-    `).bind(offerId, type).first<{ count: number }>();
+      WHERE offer_id = ${offerId} AND event_type = ${type}
+    ` as Array<{ count: number }>;
 
-    return NextResponse.json({ ok: true, count: result?.count ?? 0 });
+    return NextResponse.json({ ok: true, count: result[0]?.count ?? 0 });
   } catch (error) {
     console.error('Failed to save event', error);
-    return NextResponse.json({ ok: false }, { status: 500 });
+    return NextResponse.json({ ok: false }, { status: isDatabaseUnavailable(error) ? 503 : 500 });
   }
 }
