@@ -75,7 +75,7 @@ function DealModal({ listing, onClose }: { listing: Listing; onClose: () => void
     <div className="modal-shell" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="modal-card deal-modal" role="dialog" aria-modal="true" aria-labelledby="deal-title">
         <button className="modal-close" type="button" onClick={onClose} aria-label="Close dialog">×</button>
-        <span className="eyebrow">PRESEASON SAMPLE DEAL</span>
+        <span className="eyebrow">EXCLUSIVE PRESEASON DEAL</span>
         <div className="deal-brand">
           <span className="brand-mark large" aria-hidden="true">{listing.mark}</span>
           <div><h2 id="deal-title">{listing.name}</h2><p>{listing.tagline}</p></div>
@@ -126,7 +126,7 @@ function BidModal({ targetBid, listing, initialUrl, onClose }: { targetBid: numb
           couponCode: form.get('couponCode'),
           category: form.get('category'),
           listPrice,
-          fightPrice: dealPrice,
+          dealPrice,
           targetBid: totalBid,
         }),
       });
@@ -159,11 +159,11 @@ function BidModal({ targetBid, listing, initialUrl, onClose }: { targetBid: numb
         ) : (
           <>
             <span className="eyebrow">{listing ? `OUTBID ${listing.name.toUpperCase()}` : 'CLAIM YOUR RANK'}</span>
-            <h2 id="bid-title">Your bid is your rank.</h2>
-            <p className="modal-intro">Start at $5. Already listed? Use the same URL and pay only the difference.</p>
+            <h2 id="bid-title">Buy the rank.<br />Bring the deal.</h2>
+            <p className="modal-intro">Your total bid decides visibility. Your exclusive discount gives visitors a reason to choose you. Start at $5; rebids pay only the difference.</p>
             <form onSubmit={submit}>
               <div className="field-pair">
-                <label>Product name<input name="productName" defaultValue={listing?.name} required minLength={2} maxLength={60} placeholder="Acme Pro" /></label>
+                <label>Product name<input name="productName" autoFocus defaultValue={listing?.name} required minLength={2} maxLength={60} placeholder="Acme Pro" /></label>
                 <label>Work email<input name="email" type="email" required placeholder="you@company.com" /></label>
               </div>
               <label>Product URL<input name="productUrl" defaultValue={initialUrl ?? (listing && !listing.url.includes('example.com') ? listing.url : '')} required inputMode="url" placeholder="https://yourproduct.com" /></label>
@@ -175,11 +175,11 @@ function BidModal({ targetBid, listing, initialUrl, onClose }: { targetBid: numb
               </div>
               <div className="field-pair price-pair">
                 <label>Public price ($)<input name="listPrice" type="number" min="1" step="0.01" required value={listPrice} onChange={(event) => setListPrice(Number(event.target.value))} /></label>
-                <label>Your deal price ($)<input name="fightPrice" type="number" min="0.01" step="0.01" required value={dealPrice} onChange={(event) => setDealPrice(Number(event.target.value))} /></label>
+                <label>Your deal price ($)<input name="dealPrice" type="number" min="0.01" step="0.01" required value={dealPrice} onChange={(event) => setDealPrice(Number(event.target.value))} /></label>
                 <div className={`discount-chip ${discount >= 10 ? 'valid' : ''}`}><span>VISITOR DEAL</span><b>{discount}% OFF</b></div>
               </div>
               <div className="field-pair">
-                <label>Coupon code<input name="couponCode" required minLength={3} maxLength={32} placeholder="FIGHT50" /></label>
+                <label>Coupon code<input name="couponCode" required minLength={3} maxLength={32} placeholder="DEAL50" /></label>
                 <label>Category<select name="category" defaultValue={listing?.category ?? 'AI'}>{categories.filter((item) => item !== 'All').map((item) => <option key={item}>{item}</option>)}</select></label>
               </div>
               {error && <p className="form-error" role="alert">{error}</p>}
@@ -228,25 +228,29 @@ export default function PriceFightClient() {
   return (
     <main id="top">
       <header className="site-header">
-        <a className="wordmark" href="#top" aria-label="Price Fight home">PRICE<span>FIGHT</span><sup>.LOL</sup></a>
-        <nav aria-label="Main navigation"><a href="#leaderboard">Leaderboard</a><a href="#how">How it works</a></nav>
-        <button className="header-cta" type="button" onClick={() => setModal({ type: 'bid', targetBid: claimTopBid })}>LIST YOUR SITE <span>↗</span></button>
+        <a className="wordmark" href="#top" aria-label="Deal Fight home">DEAL<span>FIGHT</span><sup>.LOL</sup></a>
+        <nav aria-label="Main navigation"><a href="#leaderboard">Deal board</a><a href="#how">How it works</a></nav>
+        <button className="header-cta" type="button" onClick={() => setModal({ type: 'bid', targetBid: claimTopBid })}>LIST A DEAL <span>↗</span></button>
       </header>
 
-      <div className="preview-banner"><b>PRESEASON</b><span>Sample listings · submissions live · payments off</span></div>
+      <div className="preview-banner"><b>PRESEASON</b><span>Sample deals · submissions live · payments off</span></div>
 
       <section className="hero-simple">
         <div className="hero-copy">
-          <span className="eyebrow">THE INTERNET&apos;S PUBLIC AD AUCTION</span>
-          <h1>PAY MORE.<br /><em>RANK HIGHER.</em></h1>
-          <p>Your bid decides your position. Every listing stays visible. Every product gives visitors an exclusive deal.</p>
+          <span className="eyebrow">THE PAY-TO-RANK DEAL MARKETPLACE</span>
+          <h1>BID FOR RANK.<br /><em>WIN WITH DEALS.</em></h1>
+          <p>Brands pay to climb the board, then compete for customers with exclusive discounts. Every paid listing stays visible. Every visitor gets something useful.</p>
+          <div className="usp-grid" aria-label="How Deal Fight works">
+            <div><span>$</span><p><strong>MONEY BUYS THE RANK</strong>Higher lifetime bid means higher placement.</p></div>
+            <div><span>%</span><p><strong>THE DEAL WINS THE CLICK</strong>Better offers turn that visibility into customers.</p></div>
+          </div>
           <div className="hero-actions">
-            <button className="primary-cta" type="button" onClick={() => setModal({ type: 'bid', targetBid: claimTopBid })}>CLAIM A RANK <span>↗</span></button>
-            <a href="#leaderboard">SEE EVERY BID <span>↓</span></a>
+            <button className="primary-cta" type="button" onClick={() => setModal({ type: 'bid', targetBid: claimTopBid })}>LIST YOUR DEAL <span>↗</span></button>
+            <a href="#leaderboard">BROWSE THE DEALS <span>↓</span></a>
           </div>
         </div>
         <form className="top-rank-card" onSubmit={openQuickBid}>
-          <div className="top-card-head"><span>CLAIM #1</span><span>Live target</span></div>
+          <div className="top-card-head"><span>TOP PAID RANK</span><span>Live target</span></div>
           <div className="leader-mini"><span className="rank-crown">♛</span><div><small>Currently</small><strong>{currentLeader.name}</strong></div><b>{formatMoney(bidForMode(currentLeader, mode))}</b></div>
           <label htmlFor="quick-url">Your product URL</label>
           <input id="quick-url" value={quickUrl} onChange={(event) => setQuickUrl(event.target.value)} required inputMode="url" placeholder="yourproduct.com" />
@@ -256,7 +260,7 @@ export default function PriceFightClient() {
       </section>
 
       <section className="proof-strip" aria-label="Sample marketplace statistics">
-        <div><strong>{listings.length}</strong><span>sample listings</span></div>
+        <div><strong>{listings.length}</strong><span>exclusive deals</span></div>
         <div><strong>{formatMoney(totalBoardValue)}</strong><span>board value</span></div>
         <div><strong>{formatCompact(listings.reduce((sum, item) => sum + item.clicks, 0))}</strong><span>sample clicks</span></div>
         <div><strong>$5</strong><span>minimum bid</span></div>
@@ -264,8 +268,8 @@ export default function PriceFightClient() {
 
       <section className="leaderboard-section" id="leaderboard">
         <div className="section-heading">
-          <div><span className="eyebrow">NO HIDDEN INVENTORY</span><h2>Every bidder.<br />One leaderboard.</h2></div>
-          <p>Top spots get the spotlight. Everyone keeps a clickable row. Bid again at any time to move up.</p>
+          <div><span className="eyebrow">PAID RANKS. REAL DEALS.</span><h2>Bid gets the rank.<br />Deal gets the click.</h2></div>
+          <p>A transparent ad auction that is useful to browse. Brands buy visibility, then fight for customers with better discounts.</p>
         </div>
 
         <div className="board-controls">
@@ -274,7 +278,7 @@ export default function PriceFightClient() {
         </div>
 
         <div className="board-wrap">
-          <div className="board-header"><span>Rank / product</span><span>Exclusive deal</span><span>Traffic</span><span>Paid</span><span /></div>
+          <div className="board-header"><span>Paid rank / product</span><span>Exclusive deal</span><span>Clicks</span><span>Total bid</span><span /></div>
           {ranked.map((listing, index) => {
             const bid = bidForMode(listing, mode);
             const nextBid = bid + (index === 0 ? 5 : 1);
@@ -298,25 +302,25 @@ export default function PriceFightClient() {
       </section>
 
       <section className="how-section" id="how">
-        <div className="section-heading light"><div><span className="eyebrow">THE WHOLE RULEBOOK</span><h2>Three steps.<br />That&apos;s it.</h2></div><p>No opaque ad manager. No daily budget. No expiry. A public bid, a public rank, and a real deal.</p></div>
+        <div className="section-heading light"><div><span className="eyebrow">THE WHOLE RULEBOOK</span><h2>Three steps.<br />That&apos;s it.</h2></div><p>No opaque ad manager. A public bid buys attention; an exclusive offer turns it into demand.</p></div>
         <div className="steps-grid">
-          <article><span>01</span><h3>List from $5</h3><p>Add your URL, one-line pitch, and an exclusive visitor deal.</p></article>
-          <article><span>02</span><h3>Your bid = your rank</h3><p>Pay more than the listing above you. Every bidder remains on the board.</p></article>
-          <article><span>03</span><h3>Rebid the difference</h3><p>Use the same URL later. If $40 is already paid and you bid $55, checkout charges $15.</p></article>
+          <article><span>01</span><h3>Bring a real deal</h3><p>Every listing needs an exclusive visitor offer of at least 10% off.</p></article>
+          <article><span>02</span><h3>Bid for visibility</h3><p>Start at $5. Higher total bid means higher rank, and every bidder stays visible.</p></article>
+          <article><span>03</span><h3>Win clicks. Move up.</h3><p>Your deal competes for customers. If you rebid, use the same URL and pay only the difference.</p></article>
         </div>
         <button className="wide-cta" type="button" onClick={() => setModal({ type: 'bid', targetBid: claimTopBid })}>GET ON THE BOARD <span>START AT $5 ↗</span></button>
       </section>
 
       <section className="faq-section">
-        <div><span className="eyebrow">THE BUSINESS MODEL</span><h2>Simple for buyers.<br />Compulsive for bidders.</h2></div>
+        <div><span className="eyebrow">WHY IT WORKS</span><h2>Paid visibility.<br />Useful advertising.</h2></div>
         <div className="faq-list">
-          <details open><summary>How does Price Fight make money?<span>+</span></summary><p>Every new listing and every upward move creates a payment. A full leaderboard means inventory is not capped at two brands.</p></details>
-          <details><summary>Can someone pay once and stay forever?<span>+</span></summary><p>Yes, but rank is never guaranteed. New bids push older listings down, creating a clear reason to return and rebid.</p></details>
-          <details><summary>Why require a visitor deal?<span>+</span></summary><p>It gives people a reason to browse and share the board instead of treating it like a wall of ads.</p></details>
+          <details open><summary>Why would visitors come here?<span>+</span></summary><p>Every row contains an exclusive discount. It is a browsable deal destination, not a wall of links asking for attention.</p></details>
+          <details><summary>Does a bigger discount improve rank?<span>+</span></summary><p>No. Total dollars paid determine rank, so the rule stays transparent. The deal determines whether visitors click, claim, and become customers.</p></details>
+          <details><summary>Why would a brand rebid?<span>+</span></summary><p>Higher rank earns more visibility and public status. Brands can move up at any time by paying only the difference from their existing paid total.</p></details>
         </div>
       </section>
 
-      <footer><a className="wordmark inverted" href="#top">PRICE<span>FIGHT</span><sup>.LOL</sup></a><p>The public leaderboard where money talks—and visitors get a deal.</p><button type="button" onClick={() => setModal({ type: 'bid', targetBid: 5 })}>LIST FROM $5 ↗</button></footer>
+      <footer><a className="wordmark inverted" href="#top">DEAL<span>FIGHT</span><sup>.LOL</sup></a><p>Brands bid for rank. Better deals win the customer.</p><button type="button" onClick={() => setModal({ type: 'bid', targetBid: 5 })}>LIST FROM $5 ↗</button></footer>
 
       {modal?.type === 'deal' && <DealModal listing={modal.listing} onClose={() => setModal(null)} />}
       {modal?.type === 'bid' && <BidModal listing={modal.listing} initialUrl={modal.initialUrl} targetBid={modal.targetBid} onClose={() => setModal(null)} />}

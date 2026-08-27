@@ -1,6 +1,6 @@
-# Price Fight
+# Deal Fight
 
-Price Fight is a public, pay-to-rank product leaderboard. A higher total bid earns a higher rank, every paid listing remains visible, and every product supplies an exclusive visitor deal.
+Deal Fight is a pay-to-rank deal marketplace. Brands buy visibility with public bids, then compete for customers with exclusive discounts. A higher total bid earns a higher rank, and every paid listing remains visible.
 
 ## Local development
 

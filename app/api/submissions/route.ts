@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   const couponCode = cleanText(body.couponCode, 32).toUpperCase();
   const category = cleanText(body.category, 40);
   const listPrice = Number(body.listPrice);
-  const fightPrice = Number(body.fightPrice);
+  const dealPrice = Number(body.dealPrice ?? body.fightPrice);
   const targetBid = Number(body.targetBid);
 
   if (productName.length < 2 || tagline.length < 8) {
@@ -65,14 +65,14 @@ export async function POST(request: Request) {
   if (category === 'All' || !categories.includes(category as (typeof categories)[number])) {
     return NextResponse.json({ error: 'Choose a valid category.' }, { status: 422 });
   }
-  if (!Number.isFinite(listPrice) || !Number.isFinite(fightPrice) || listPrice <= 0 || fightPrice <= 0 || fightPrice >= listPrice) {
-    return NextResponse.json({ error: 'The fight price must be lower than the public list price.' }, { status: 422 });
+  if (!Number.isFinite(listPrice) || !Number.isFinite(dealPrice) || listPrice <= 0 || dealPrice <= 0 || dealPrice >= listPrice) {
+    return NextResponse.json({ error: 'The deal price must be lower than the public list price.' }, { status: 422 });
   }
   if (!couponCode || couponCode.length < 3) {
     return NextResponse.json({ error: 'Add the coupon code customers will use.' }, { status: 422 });
   }
 
-  const discountPercent = Math.round((1 - fightPrice / listPrice) * 100);
+  const discountPercent = Math.round((1 - dealPrice / listPrice) * 100);
   if (discountPercent < 10) {
     return NextResponse.json({ error: 'Visitor deals start at 10% off.' }, { status: 422 });
   }
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
       email,
       tagline,
       Math.round(listPrice * 100),
-      Math.round(fightPrice * 100),
+      Math.round(dealPrice * 100),
       discountPercent,
       couponCode,
       category,
@@ -126,7 +126,7 @@ export async function POST(request: Request) {
     ).run();
   } catch (error) {
     console.error('Failed to save submission', error);
-    return NextResponse.json({ error: 'The arena could not save that entry. Try again.' }, { status: 500 });
+    return NextResponse.json({ error: 'The deal board could not save that entry. Try again.' }, { status: 500 });
   }
 
   return NextResponse.json({
