@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getDatabase, isDatabaseUnavailable } from '@/lib/database';
 import { getDodoPayments, isPaymentProviderUnavailable } from '@/lib/dodo-payments';
+import { consumeRateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
+
+const submissionIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function POST(request: Request) {
   let body: { submissionId?: unknown };
@@ -14,11 +17,19 @@ export async function POST(request: Request) {
   }
 
   const submissionId = typeof body.submissionId === 'string' ? body.submissionId.trim() : '';
-  if (!submissionId) {
-    return NextResponse.json({ error: 'A submission id is required.' }, { status: 422 });
+  if (!submissionIdPattern.test(submissionId)) {
+    return NextResponse.json({ error: 'A valid submission id is required.' }, { status: 422 });
   }
 
   try {
+    const allowed = await consumeRateLimit(request, 'checkout', 20, 3600);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Too many checkout attempts. Try again in an hour.' },
+        { status: 429, headers: { 'Retry-After': '3600' } },
+      );
+    }
+
     const database = await getDatabase();
     const { data: submission, error: submissionError } = await database
       .from('submissions')

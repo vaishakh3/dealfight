@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { categories } from '@/lib/leaderboard-data';
 import { getDatabase, isDatabaseUnavailable } from '@/lib/database';
+import { consumeRateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -8,6 +9,18 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
+}
+
+function toCents(value: unknown, minimum: number, maximum: number) {
+  const amount = Number(value);
+  const scaled = amount * 100;
+  const cents = Math.round(scaled);
+
+  if (!Number.isFinite(amount) || !Number.isSafeInteger(cents) || Math.abs(scaled - cents) > 1e-7) {
+    return null;
+  }
+
+  return cents >= minimum && cents <= maximum ? cents : null;
 }
 
 function normalizeUrl(value: unknown) {
@@ -51,9 +64,9 @@ export async function POST(request: Request) {
   const tagline = cleanText(body.tagline, 140);
   const couponCode = cleanText(body.couponCode, 32).toUpperCase();
   const category = cleanText(body.category, 40);
-  const listPrice = Number(body.listPrice);
-  const dealPrice = Number(body.dealPrice ?? body.fightPrice);
-  const targetBid = Number(body.targetBid);
+  const listPriceCents = toCents(body.listPrice, 1, 100_000_000);
+  const dealPriceCents = toCents(body.dealPrice ?? body.fightPrice, 1, 100_000_000);
+  const targetBidCents = toCents(body.targetBid, 500, 100_000_000);
 
   if (productName.length < 2 || tagline.length < 8) {
     return NextResponse.json({ error: 'Add a product name and a clear one-line description.' }, { status: 422 });
@@ -67,28 +80,35 @@ export async function POST(request: Request) {
   if (category === 'All' || !categories.includes(category as (typeof categories)[number])) {
     return NextResponse.json({ error: 'Choose a valid category.' }, { status: 422 });
   }
-  if (!Number.isFinite(listPrice) || !Number.isFinite(dealPrice) || listPrice <= 0 || dealPrice <= 0 || dealPrice >= listPrice) {
-    return NextResponse.json({ error: 'The deal price must be lower than the public list price.' }, { status: 422 });
+  if (listPriceCents === null || dealPriceCents === null || dealPriceCents >= listPriceCents) {
+    return NextResponse.json({ error: 'Use valid USD prices with no more than two decimal places; the deal price must be lower.' }, { status: 422 });
   }
   if (!couponCode || couponCode.length < 3) {
     return NextResponse.json({ error: 'Add the coupon code customers will use.' }, { status: 422 });
   }
 
-  const discountPercent = Math.round((1 - dealPrice / listPrice) * 100);
+  const discountPercent = Math.round((1 - dealPriceCents / listPriceCents) * 100);
   if (discountPercent < 10) {
     return NextResponse.json({ error: 'Visitor deals start at 10% off.' }, { status: 422 });
   }
-  if (!Number.isFinite(targetBid) || targetBid < 5 || targetBid > 1_000_000) {
-    return NextResponse.json({ error: 'Set a total bid between $5 and $1,000,000.' }, { status: 422 });
+  if (targetBidCents === null) {
+    return NextResponse.json({ error: 'Set a total bid between $5 and $1,000,000 with no more than two decimal places.' }, { status: 422 });
   }
 
   const id = crypto.randomUUID();
   const normalizedUrl = urlIdentity(productUrl);
-  const targetBidCents = Math.round(targetBid * 100);
   let previousBidCents = 0;
   let amountDueCents = targetBidCents;
 
   try {
+    const allowed = await consumeRateLimit(request, 'submissions', 10, 3600);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Too many listing attempts. Try again in an hour.' },
+        { status: 429, headers: { 'Retry-After': '3600' } },
+      );
+    }
+
     const database = await getDatabase();
     const { data: previousBid, error: previousBidError } = await database
       .from('submissions')
@@ -114,8 +134,6 @@ export async function POST(request: Request) {
       }, { status: 422 });
     }
 
-    const listPriceCents = Math.round(listPrice * 100);
-    const dealPriceCents = Math.round(dealPrice * 100);
     const { error: insertError } = await database.from('submissions').insert({
       id,
       product_name: productName,

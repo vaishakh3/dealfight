@@ -4,6 +4,8 @@ import { getDodoPayments, isPaymentProviderUnavailable } from '@/lib/dodo-paymen
 
 export const runtime = 'nodejs';
 
+const submissionIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export async function POST(request: Request) {
   const rawBody = await request.text();
   const webhookId = request.headers.get('webhook-id');
@@ -41,16 +43,21 @@ export async function POST(request: Request) {
     const payment = event.data;
     const rawSubmissionId = payment.metadata?.submission_id;
     const submissionId = typeof rawSubmissionId === 'string' ? rawSubmissionId : '';
-    const hasDealFightProduct = payment.product_cart?.some((item) => item.product_id === config.productId) ?? false;
+    const expectedProductCart = payment.product_cart?.length === 1
+      && payment.product_cart[0].product_id === config.productId
+      && payment.product_cart[0].quantity === 1;
 
-    if (!submissionId || !payment.checkout_session_id || !hasDealFightProduct) {
+    if (!submissionIdPattern.test(submissionId) || !payment.checkout_session_id || !expectedProductCart || payment.is_update_payment_method || payment.subscription_id) {
       return NextResponse.json({ error: 'Payment is not linked to a Deal Fight checkout.' }, { status: 422 });
+    }
+    if ((payment.discounts?.length ?? 0) > 0) {
+      return NextResponse.json({ error: 'Visibility bids cannot be paid with a checkout discount.' }, { status: 422 });
     }
 
     const database = await getDatabase();
     const { data: submission, error: submissionError } = await database
       .from('submissions')
-      .select('id, status, dodo_checkout_session_id, dodo_payment_id')
+      .select('id, status, email, target_bid_cents, amount_due_cents, dodo_checkout_session_id, dodo_payment_id')
       .eq('id', submissionId)
       .maybeSingle();
 
@@ -60,6 +67,11 @@ export async function POST(request: Request) {
     }
     if (submission.dodo_checkout_session_id !== payment.checkout_session_id) {
       return NextResponse.json({ error: 'Checkout session does not match the linked submission.' }, { status: 409 });
+    }
+    if (payment.customer.email.toLowerCase() !== submission.email.toLowerCase()
+      || String(payment.metadata?.target_bid_cents ?? '') !== String(submission.target_bid_cents)
+      || String(payment.metadata?.amount_due_cents ?? '') !== String(submission.amount_due_cents)) {
+      return NextResponse.json({ error: 'Payment metadata does not match the linked submission.' }, { status: 409 });
     }
     if (submission.status === 'paid' && submission.dodo_payment_id === payment.payment_id) {
       return NextResponse.json({ received: true, handled: true, duplicate: true });

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDatabase, isDatabaseUnavailable } from '@/lib/database';
+import { consumeRateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -22,6 +23,14 @@ export async function POST(request: Request) {
   }
 
   try {
+    const allowed = await consumeRateLimit(request, 'events', 120, 60);
+    if (!allowed) {
+      return NextResponse.json(
+        { ok: false, error: 'Too many events.' },
+        { status: 429, headers: { 'Retry-After': '60' } },
+      );
+    }
+
     const database = await getDatabase();
     const { error: insertError } = await database.from('engagement_events').insert({
       offer_id: offerId,

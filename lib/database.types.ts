@@ -108,7 +108,17 @@ export type Database = {
       };
     };
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      consume_dealfight_rate_limit: {
+        Args: {
+          p_bucket: string;
+          p_fingerprint: string;
+          p_max_requests: number;
+          p_window_seconds: number;
+        };
+        Returns: boolean;
+      };
+    };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
   };
