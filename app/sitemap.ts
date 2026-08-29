@@ -14,5 +14,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.5,
     },
+    ...['listing-standards', 'privacy', 'terms'].map((path) => ({
+      url: `https://www.dealfight.lol/${path}`,
+      lastModified: new Date('2026-08-29'),
+      changeFrequency: 'monthly' as const,
+      priority: 0.5,
+    })),
   ];
 }

@@ -18,6 +18,35 @@ type DealModalState = {
 
 type ModalState = BidModalState | DealModalState | null;
 
+type CheckoutNotice = 'checking' | 'paid' | 'pending' | 'cancelled' | 'refunded' | 'error';
+
+const checkoutNotices: Record<CheckoutNotice, { title: string; message: string }> = {
+  checking: {
+    title: 'VERIFYING PAYMENT',
+    message: 'Secure checkout has returned. We are waiting for Dodo’s signed confirmation.',
+  },
+  paid: {
+    title: 'PAYMENT CONFIRMED',
+    message: 'Your visibility bid is secured. We’ll review the deal before it appears on the board.',
+  },
+  pending: {
+    title: 'CONFIRMATION PENDING',
+    message: 'Dodo is still finalizing the payment. Please don’t pay again; refresh this page in a minute.',
+  },
+  cancelled: {
+    title: 'NO PAYMENT MADE',
+    message: 'Checkout was cancelled or unsuccessful. Your listing request was not published.',
+  },
+  refunded: {
+    title: 'PAYMENT REFUNDED',
+    message: 'This visibility payment was refunded and the listing is not active.',
+  },
+  error: {
+    title: 'STATUS UNAVAILABLE',
+    message: 'We could not verify the result yet. Check your Dodo receipt before trying another payment.',
+  },
+};
+
 type SubmissionResult = {
   submissionId: string;
   discountPercent: number;
@@ -280,7 +309,7 @@ function BidModal({ targetBid, boardListings, placementChoices, onClose }: { tar
           <button className="modal-primary" type="button" onClick={continueToCheckout} disabled={status === 'checkout'}>
             {status === 'checkout' ? 'OPENING SECURE CHECKOUT…' : `CONTINUE · ${formatMoney(result.amountDueCents / 100)} BALANCE`} <CtaArrow />
           </button>
-          <p className="payment-policy-note">By continuing, you confirm the offer is accurate and agree to our <Link href="/refund-policy" target="_blank">refund policy</Link>. Once a listing is published, visibility payments are non-refundable except for duplicate or incorrect charges, non-delivery, fraud, legal requirements, or another exception stated in that policy.</p>
+          <p className="payment-policy-note">By continuing, you confirm the offer is accurate and agree to our <Link href="/terms" target="_blank">platform terms</Link>, <Link href="/listing-standards" target="_blank">listing standards</Link>, and <Link href="/refund-policy" target="_blank">refund policy</Link>. Once a listing is published, visibility payments are non-refundable except for an exception stated in that policy.</p>
           <button className="success-secondary" type="button" onClick={onClose}>Not now — back to the deals</button>
         </section>
       </div>
@@ -385,7 +414,7 @@ function DealRow({ listing, rank, onOpen }: { listing: Listing; rank: number; on
 export default function PriceFightClient({ initialListings = launchListings }: { initialListings?: Listing[] }) {
   const [category, setCategory] = useState<(typeof categories)[number]>('All');
   const [modal, setModal] = useState<ModalState>(null);
-  const [checkoutNotice, setCheckoutNotice] = useState<'paid' | 'cancelled' | null>(null);
+  const [checkoutNotice, setCheckoutNotice] = useState<CheckoutNotice | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
   const orderedListings = [...initialListings].sort((a, b) => b.totalBid - a.totalBid);
@@ -415,12 +444,48 @@ export default function PriceFightClient({ initialListings = launchListings }: {
     const params = new URLSearchParams(window.location.search);
     const checkout = params.get('checkout');
     const paymentStatus = params.get('status');
-    const notice = checkout === 'cancelled'
-      ? 'cancelled'
-      : checkout === 'return' || paymentStatus === 'succeeded'
-        ? 'paid'
-        : null;
-    if (notice) window.setTimeout(() => setCheckoutNotice(notice), 0);
+    const submissionId = params.get('submission');
+    const paymentReturned = checkout === 'return' || paymentStatus === 'succeeded';
+    const paymentCancelled = checkout === 'cancelled' || paymentStatus === 'cancelled' || paymentStatus === 'failed';
+    let stopped = false;
+
+    if (paymentCancelled) {
+      window.setTimeout(() => setCheckoutNotice('cancelled'), 0);
+    } else if (paymentReturned && submissionId) {
+      window.setTimeout(() => setCheckoutNotice('checking'), 0);
+      const checkPayment = async () => {
+        for (let attempt = 0; attempt < 8 && !stopped; attempt += 1) {
+          try {
+            const response = await fetch(`/api/submission-status?submission=${encodeURIComponent(submissionId)}`, {
+              cache: 'no-store',
+            });
+            const payload = await response.json() as { status?: string };
+            if (!response.ok) throw new Error('Status request failed');
+            if (payload.status === 'paid') {
+              setCheckoutNotice('paid');
+              return;
+            }
+            if (payload.status === 'refunded') {
+              setCheckoutNotice('refunded');
+              return;
+            }
+            if (payload.status === 'cancelled') {
+              setCheckoutNotice('cancelled');
+              return;
+            }
+          } catch {
+            if (attempt === 7 && !stopped) setCheckoutNotice('error');
+          }
+
+          await new Promise((resolve) => window.setTimeout(resolve, 1500 + attempt * 350));
+        }
+        if (!stopped) setCheckoutNotice('pending');
+      };
+      void checkPayment();
+    } else if (paymentReturned) {
+      window.setTimeout(() => setCheckoutNotice('pending'), 0);
+    }
+
     if (checkout || paymentStatus) {
       params.delete('checkout');
       params.delete('status');
@@ -430,6 +495,10 @@ export default function PriceFightClient({ initialListings = launchListings }: {
       const nextSearch = params.toString();
       window.history.replaceState({}, '', `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`);
     }
+
+    return () => {
+      stopped = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -459,8 +528,7 @@ export default function PriceFightClient({ initialListings = launchListings }: {
       </header>
 
       <div className="preview-banner"><b>DEALS FIRST</b><span>Brands bid for visibility. You compare the actual offer.</span></div>
-      {checkoutNotice === 'paid' && <div className="checkout-return-banner success" role="status"><b>PAYMENT RECEIVED</b><span>Your bid is being verified. We&apos;ll review the deal before it appears on the board.</span><button type="button" onClick={() => setCheckoutNotice(null)} aria-label="Dismiss payment message">×</button></div>}
-      {checkoutNotice === 'cancelled' && <div className="checkout-return-banner cancelled" role="status"><b>NO PAYMENT MADE</b><span>Your listing request is saved. Submit it again whenever you&apos;re ready to secure the bid.</span><button type="button" onClick={() => setCheckoutNotice(null)} aria-label="Dismiss payment message">×</button></div>}
+      {checkoutNotice && <div className={`checkout-return-banner ${checkoutNotice}`} role="status" aria-live="polite"><b>{checkoutNotices[checkoutNotice].title}</b><span>{checkoutNotices[checkoutNotice].message}</span><button type="button" onClick={() => setCheckoutNotice(null)} aria-label="Dismiss payment message">×</button></div>}
 
       <section className="consumer-hero">
         <div className="hero-copy">
@@ -558,6 +626,12 @@ export default function PriceFightClient({ initialListings = launchListings }: {
             <a href="https://dodopayments.com/buyer-terms" target="_blank" rel="noopener noreferrer">Buyer terms</a>
             {' · '}
             <a href="https://dodopayments.com/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy</a>
+            {' · '}
+            <Link href="/listing-standards">Listing standards</Link>
+            {' · '}
+            <Link href="/terms">Platform terms</Link>
+            {' · '}
+            <Link href="/privacy">Privacy policy</Link>
             {' · '}
             <Link href="/refund-policy">Refund policy</Link>
           </small>

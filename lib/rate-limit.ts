@@ -13,7 +13,7 @@ function getClientAddress(request: Request) {
 
 export async function consumeRateLimit(
   request: Request,
-  bucket: 'submissions' | 'checkout' | 'events',
+  bucket: 'submissions' | 'checkout' | 'submission-status' | 'events',
   maxRequests: number,
   windowSeconds: number,
 ) {

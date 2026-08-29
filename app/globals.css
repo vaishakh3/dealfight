@@ -55,7 +55,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .preview-banner b { background: var(--lime); color: var(--ink); padding: 3px 6px; }
 .checkout-return-banner { align-items: center; border-bottom: 1px solid var(--ink); display: grid; gap: 12px; grid-template-columns: auto 1fr auto; padding: 12px 4vw; }
 .checkout-return-banner.success { background: var(--lime); }
+.checkout-return-banner.paid { background: var(--lime); }
+.checkout-return-banner.checking { background: var(--blue); color: white; }
+.checkout-return-banner.pending { background: #fff0a8; }
 .checkout-return-banner.cancelled { background: #ffe2dc; }
+.checkout-return-banner.refunded { background: var(--lime-soft); }
+.checkout-return-banner.error { background: #ffe2dc; }
 .checkout-return-banner b { font-family: var(--font-geist-mono); font-size: 9px; letter-spacing: .07em; }
 .checkout-return-banner span { font-size: 11px; }
 .checkout-return-banner button { background: transparent; border: 0; cursor: pointer; font-size: 22px; line-height: 1; min-height: 36px; min-width: 36px; }

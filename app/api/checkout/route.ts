@@ -79,6 +79,9 @@ export async function POST(request: Request) {
     const { client, config } = getDodoPayments();
     const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
     const siteOrigin = configuredSiteUrl ? new URL(configuredSiteUrl).origin : new URL(request.url).origin;
+    if (config.environment === 'live_mode' && !siteOrigin.startsWith('https://')) {
+      throw new Error('Live checkout requires an HTTPS site URL.');
+    }
     const returnUrl = new URL('/', siteOrigin);
     returnUrl.searchParams.set('checkout', 'return');
     returnUrl.searchParams.set('submission', submission.id);
@@ -97,6 +100,39 @@ export async function POST(request: Request) {
         target_bid_cents: String(submission.target_bid_cents),
         amount_due_cents: String(amountDueCents),
         listing_name: submission.product_name,
+      },
+      customization: {
+        force_language: 'en',
+        show_order_details: true,
+        theme: 'light',
+        theme_config: {
+          radius: '0px',
+          pay_button_text: 'Pay visibility bid',
+          light: {
+            bg_primary: '#f6f3e9',
+            bg_secondary: '#fffef8',
+            border_primary: '#10110f',
+            border_secondary: '#cfcbc0',
+            button_primary: '#10110f',
+            button_primary_hover: '#bd2c0d',
+            button_secondary: '#fffef8',
+            button_secondary_hover: '#eaff9f',
+            button_text_primary: '#ceff2e',
+            button_text_secondary: '#10110f',
+            input_focus_border: '#1958f0',
+            text_primary: '#10110f',
+            text_secondary: '#65665f',
+            text_success: '#176b25',
+            text_error: '#bd2c0d',
+          },
+        },
+      },
+      feature_flags: {
+        allow_currency_selection: true,
+        allow_customer_editing_email: false,
+        allow_discount_code: false,
+        allow_phone_number_collection: false,
+        redirect_immediately: true,
       },
       return_url: returnUrl.toString(),
       cancel_url: cancelUrl.toString(),

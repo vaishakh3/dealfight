@@ -4,9 +4,16 @@ import DodoPayments from 'dodopayments';
 
 export type DodoEnvironment = 'test_mode' | 'live_mode';
 
+type DodoConfig = {
+  apiKey: string;
+  webhookKey: string | undefined;
+  productId: string;
+  environment: DodoEnvironment;
+};
+
 export class PaymentProviderUnavailableError extends Error {
-  constructor() {
-    super('Dodo Payments is not configured. Add the server-only payment credentials, then redeploy.');
+  constructor(message = 'Dodo Payments is not configured. Add the server-only payment credentials, then redeploy.') {
+    super(message);
     this.name = 'PaymentProviderUnavailableError';
   }
 }
@@ -14,16 +21,17 @@ export class PaymentProviderUnavailableError extends Error {
 let client: DodoPayments | null = null;
 let clientFingerprint = '';
 
-export function getDodoConfig() {
+export function getDodoConfig(): DodoConfig {
   const apiKey = process.env.DODO_PAYMENTS_API_KEY;
   const webhookKey = process.env.DODO_PAYMENTS_WEBHOOK_KEY;
   const productId = process.env.DODO_PAYMENTS_PRODUCT_ID;
-  const environment: DodoEnvironment = process.env.DODO_PAYMENTS_ENVIRONMENT === 'live_mode'
-    ? 'live_mode'
-    : 'test_mode';
+  const environment = process.env.DODO_PAYMENTS_ENVIRONMENT;
 
   if (!apiKey || !productId) {
     throw new PaymentProviderUnavailableError();
+  }
+  if (environment !== 'test_mode' && environment !== 'live_mode') {
+    throw new PaymentProviderUnavailableError('Dodo Payments has an invalid environment setting.');
   }
 
   return { apiKey, webhookKey, productId, environment };
