@@ -96,6 +96,7 @@ async function recordEvent(offerId: string, type: 'claim' | 'click' | 'share') {
   try {
     await fetch('/api/events', {
       method: 'POST',
+      keepalive: true,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ offerId, type }),
     });
@@ -141,6 +142,9 @@ function DealModal({ listing, rank, onClose }: { listing: Listing; rank: number;
         <a className="modal-primary" href={listing.url} target="_blank" rel="noopener noreferrer sponsored" onClick={() => recordEvent(listing.id, 'click')}>
           Go to {listing.name} <CtaArrow />
         </a>
+        <Link className="deal-share-link" href={`/deals/${listing.id}`}>
+          SHARE THIS DEAL <span>↗</span>
+        </Link>
         <div className="sponsor-explainer">
           <b>Why is this sponsored #{rank}?</b>
           <p>{listing.name} has committed {formatMoney(listing.totalBid)} for this placement. That payment determines rank; the shopper offer above is separate.</p>
@@ -445,6 +449,8 @@ export default function PriceFightClient({ initialListings = launchListings }: {
     const checkout = params.get('checkout');
     const paymentStatus = params.get('status');
     const submissionId = params.get('submission');
+    const listingRequested = params.get('list') === '1';
+    const requestedBid = Number(params.get('target'));
     const paymentReturned = checkout === 'return' || paymentStatus === 'succeeded';
     const paymentCancelled = checkout === 'cancelled' || paymentStatus === 'cancelled' || paymentStatus === 'failed';
     let stopped = false;
@@ -486,12 +492,19 @@ export default function PriceFightClient({ initialListings = launchListings }: {
       window.setTimeout(() => setCheckoutNotice('pending'), 0);
     }
 
-    if (checkout || paymentStatus) {
+    if (listingRequested) {
+      const targetBid = Number.isFinite(requestedBid) && requestedBid >= 5 ? Math.ceil(requestedBid) : 5;
+      window.setTimeout(() => setModal({ type: 'bid', targetBid }), 0);
+    }
+
+    if (checkout || paymentStatus || listingRequested) {
       params.delete('checkout');
       params.delete('status');
       params.delete('payment_id');
       params.delete('email');
       params.delete('submission');
+      params.delete('list');
+      params.delete('target');
       const nextSearch = params.toString();
       window.history.replaceState({}, '', `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`);
     }

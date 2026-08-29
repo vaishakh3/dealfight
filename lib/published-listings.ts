@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { connection } from 'next/server';
+import { cache } from 'react';
 import { getDatabase } from '@/lib/database';
 import { listings as launchListings, type Listing } from '@/lib/leaderboard-data';
 
@@ -36,6 +37,7 @@ export async function getPublishedListings(): Promise<Listing[]> {
       return [{
         id: submission.id,
         name: submission.product_name,
+        source: 'paid',
         tagline: submission.tagline,
         category: submission.category,
         totalBid: submission.target_bid_cents / 100,
@@ -55,3 +57,17 @@ export async function getPublishedListings(): Promise<Listing[]> {
     return launchListings;
   }
 }
+
+export const getPublishedDeal = cache(async (id: string) => {
+  const listings = await getPublishedListings();
+  const index = listings.findIndex((listing) => listing.id === id);
+
+  if (index === -1) return null;
+
+  return {
+    listing: listings[index],
+    rank: index + 1,
+    nextBid: listings[index].totalBid + 1,
+    listingCount: listings.length,
+  };
+});

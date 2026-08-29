@@ -1,6 +1,9 @@
 import type { MetadataRoute } from 'next';
+import { getPublishedListings } from '@/lib/published-listings';
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const paidDeals = (await getPublishedListings()).filter((listing) => listing.source === 'paid');
+
   return [
     {
       url: 'https://www.dealfight.lol',
@@ -19,6 +22,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date('2026-08-29'),
       changeFrequency: 'monthly' as const,
       priority: 0.5,
+    })),
+    ...paidDeals.map((listing) => ({
+      url: `https://www.dealfight.lol/deals/${listing.id}`,
+      lastModified: new Date(),
+      changeFrequency: 'daily' as const,
+      priority: 0.8,
     })),
   ];
 }
