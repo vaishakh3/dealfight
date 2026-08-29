@@ -558,17 +558,6 @@ export default function PriceFightClient({ initialListings = launchListings }: {
         <div><strong>100%</strong><span>sponsored ranks disclosed</span></div>
       </section>
 
-      <section className="ranking-explainer" id="how-ranking-works">
-        <div><span className="eyebrow">ONE IMPORTANT THING</span><h2>The rank is paid.<br />The saving is yours.</h2></div>
-        <div className="ranking-equation">
-          <article><span>FOR BRANDS</span><b>$</b><h3>Visibility bid</h3><p>Brands choose how much to commit for placement. Highest total gets #1.</p></article>
-          <span className="equation-plus">+</span>
-          <article><span>FOR SHOPPERS</span><b>%</b><h3>Exclusive offer</h3><p>A separate discount of at least 10% gives you a reason to click.</p></article>
-          <span className="equation-equals">=</span>
-          <article className="equation-result"><span>THE RESULT</span><b><CtaArrow /></b><h3>Useful sponsored deals</h3><p>Clear paid rankings without pretending the highest bidder has the best discount.</p></article>
-        </div>
-      </section>
-
       <section className="deals-section" id="deals">
         <div className="section-heading">
           <div><span className="eyebrow">THE SPONSORED DEAL BOARD</span><h2>Pick the offer<br />that works for you.</h2></div>
@@ -583,6 +572,17 @@ export default function PriceFightClient({ initialListings = launchListings }: {
         <div className="deal-board">
           {ranked.map((listing) => <DealRow key={listing.id} listing={listing} rank={listingRanks.get(listing.id) ?? orderedListings.length} onOpen={() => openModal({ type: 'deal', listing })} />)}
           {!ranked.length && <div className="empty-board">No sponsored deals in this category yet.</div>}
+        </div>
+      </section>
+
+      <section className="ranking-explainer" id="how-ranking-works">
+        <div><span className="eyebrow">ONE IMPORTANT THING</span><h2>The rank is paid.<br />The saving is yours.</h2></div>
+        <div className="ranking-equation">
+          <article><span>FOR BRANDS</span><b>$</b><h3>Visibility bid</h3><p>Brands choose how much to commit for placement. Highest total gets #1.</p></article>
+          <span className="equation-plus">+</span>
+          <article><span>FOR SHOPPERS</span><b>%</b><h3>Exclusive offer</h3><p>A separate discount of at least 10% gives you a reason to click.</p></article>
+          <span className="equation-equals">=</span>
+          <article className="equation-result"><span>THE RESULT</span><b><CtaArrow /></b><h3>Useful sponsored deals</h3><p>Clear paid rankings without pretending the highest bidder has the best discount.</p></article>
         </div>
       </section>
 
