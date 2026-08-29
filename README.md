@@ -2,6 +2,14 @@
 
 Deal Fight is a pay-to-rank deal marketplace. Brands buy visibility with public bids, then compete for customers with exclusive discounts. A higher total bid earns a higher rank, and every paid listing remains visible.
 
+**[Visit the live deal board →](https://www.dealfight.lol)**
+
+- **For shoppers:** discover reviewed software offers without confusing the sponsor bid with the price or discount you receive.
+- **For brands:** submit a real offer, preview the listing, and bid for a transparent sponsored position starting at $5.
+- **The rule:** sponsor spend determines rank. It never changes the shopper offer.
+
+Every paid position is labelled, every offer is manually reviewed before publication, and the listing standards prohibit fake discounts, inflated reference prices, and artificial scarcity.
+
 The sourced product thesis, competitive review, risk analysis, viral loops, and launch experiments are documented in [`docs/research-and-positioning.md`](docs/research-and-positioning.md).
 
 ## Local development

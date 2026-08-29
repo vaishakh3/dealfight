@@ -74,13 +74,11 @@ export const metadata: Metadata = {
     url: '/',
     siteName: 'Deal Fight',
     type: 'website',
-    images: [{ url: '/brand/dealfight-mark-512.png', width: 512, height: 512, alt: 'Deal Fight logo' }],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'Deal Fight — Brands fight. You save.',
     description: 'Paid placement is clear. Shopper savings are clearer.',
-    images: ['/brand/dealfight-mark-512.png'],
   },
 };
 
